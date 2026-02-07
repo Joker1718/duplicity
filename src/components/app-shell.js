@@ -121,7 +121,7 @@ function LoadingDialog({ status, message, fileName }) {
 
   return (
     <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-      <div className="pointer-events-auto w-full max-w-md rounded-xl border border-white/25 bg-black p-5 shadow-2xl">
+      <div className="pointer-events-auto m3-surface-raised w-full max-w-md p-5">
         <h3 className="text-xl font-semibold">{title}</h3>
         {fileName ? (
           <p className="mt-1 text-xs opacity-70">
@@ -129,7 +129,7 @@ function LoadingDialog({ status, message, fileName }) {
           </p>
         ) : null}
         <p className="mt-4 text-sm opacity-85">{message || "Processing..."}</p>
-        <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/15">
+        <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[var(--surface-container-highest)]">
           <div className="h-full w-1/2 animate-pulse rounded-full bg-[var(--accent)]" />
         </div>
       </div>
@@ -144,7 +144,7 @@ function ImportWarningDialog({ warning, onConfirm, onCancel }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-      <div className="w-full max-w-lg rounded-xl border border-white/25 bg-black p-5 shadow-2xl">
+      <div className="m3-surface-raised w-full max-w-lg p-5">
         <h3 className="text-xl font-semibold">Checksum Warning</h3>
         <p className="mt-2 text-sm opacity-85">
           Import file checksum does not match the payload. Data may have been modified.
@@ -162,14 +162,14 @@ function ImportWarningDialog({ warning, onConfirm, onCancel }) {
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-md border border-white/30 px-3 py-2 text-sm font-semibold hover:bg-white/10"
+            className="m3-button m3-button-outlined px-3 py-2 text-sm"
           >
             Cancel
           </button>
           <button
             type="button"
             onClick={onConfirm}
-            className="rounded-md bg-[var(--accent)] px-3 py-2 text-sm font-semibold text-black hover:brightness-110"
+            className="m3-button m3-button-tonal px-3 py-2 text-sm"
           >
             Import Anyway
           </button>
@@ -224,7 +224,7 @@ export default function AppShell({ children }) {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="h-dvh overflow-hidden bg-background text-foreground">
       <LoadingDialog
         status={status}
         message={progressMessage}
@@ -235,8 +235,9 @@ export default function AppShell({ children }) {
         onCancel={() => confirmImportWarning(false)}
         onConfirm={() => confirmImportWarning(true)}
       />
-      <div className="mx-auto flex min-h-screen w-full max-w-7xl">
-        <aside className="hidden w-64 border-r border-black/10 p-4 dark:border-white/15 md:block">
+      <div className="mx-auto flex h-full w-full max-w-7xl flex-col p-3">
+        <div className="flex min-h-0 flex-1 gap-4">
+          <aside className="m3-surface hidden h-full w-64 overflow-y-auto p-4 md:block">
           <h1 className="text-lg font-semibold">Duplicity</h1>
           <p className="mt-1 text-xs opacity-70">V4 Migration</p>
           <nav className="mt-6 space-y-1">
@@ -248,7 +249,7 @@ export default function AppShell({ children }) {
                 return (
                   <span
                     key={item.href}
-                    className="block rounded-md px-3 py-2 text-sm opacity-40"
+                    className="m3-nav-item m3-nav-item-disabled block px-3 py-2 text-sm"
                     title={
                       item.implemented === false
                         ? "Planned but not implemented in V4 yet."
@@ -263,10 +264,8 @@ export default function AppShell({ children }) {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`block rounded-md px-3 py-2 text-sm ${
-                    active
-                      ? "bg-black text-white dark:bg-white dark:text-black"
-                      : "hover:bg-black/5 dark:hover:bg-white/10"
+                  className={`m3-nav-item block px-3 py-2 text-sm ${
+                    active ? "m3-nav-item-active" : ""
                   }`}
                 >
                   {item.label}
@@ -274,15 +273,15 @@ export default function AppShell({ children }) {
               );
             })}
           </nav>
-        </aside>
+          </aside>
 
-        <div className="flex min-h-screen w-full flex-col">
-          <header className="border-b border-black/10 px-4 py-3 dark:border-white/15 sm:px-6">
+          <div className="m3-surface flex min-h-0 w-full flex-col overflow-hidden">
+            <header className="border-b border-[var(--outline)] bg-[var(--surface)] px-4 py-3 sm:px-6">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="mr-auto text-lg font-semibold">{pageTitle}</h2>
               <Link
                 href="/settings"
-                className="rounded-md border border-white/25 px-3 py-2 text-sm hover:bg-white/10"
+                className="m3-button m3-button-outlined px-3 py-2 text-sm"
               >
                 Settings
               </Link>
@@ -290,7 +289,7 @@ export default function AppShell({ children }) {
                 type="button"
                 onClick={onLoadButtonClick}
                 disabled={isBusy}
-                className="rounded-md border border-white/25 px-3 py-2 text-sm font-semibold hover:bg-white/10 disabled:opacity-50"
+                className="m3-button m3-button-outlined px-3 py-2 text-sm"
               >
                 Load Save
               </button>
@@ -298,14 +297,14 @@ export default function AppShell({ children }) {
                 type="button"
                 onClick={() => saveCurrentFile()}
                 disabled={isBusy || !hasSave}
-                className="rounded-md bg-[var(--accent)] px-3 py-2 text-sm font-semibold text-black hover:brightness-110 disabled:opacity-50"
+                className="m3-button m3-button-tonal px-3 py-2 text-sm"
               >
                 Save
               </button>
               <select
                 value={strictness}
                 onChange={(event) => setStrictness(event.target.value)}
-                className="rounded-md border border-white/25 bg-black px-2 py-2 text-sm"
+                className="m3-field px-2 py-2 text-sm"
                 title="Parser version strictness"
               >
                 <option value="major">major</option>
@@ -314,17 +313,17 @@ export default function AppShell({ children }) {
               </select>
               {hasSave ? (
                 <span
-                  className={`rounded px-2 py-1 text-xs ${
+                  className={`m3-chip px-2 py-1 text-xs ${
                     isModified
-                      ? "bg-amber-500/25 text-amber-700 dark:text-amber-200"
-                      : "bg-emerald-500/20 text-emerald-700 dark:text-emerald-200"
+                      ? "border-amber-300/50 bg-amber-500/15 text-[var(--warning)]"
+                      : "border-emerald-300/45 bg-emerald-500/12 text-[var(--success)]"
                   }`}
                 >
                   {isModified ? "Modified" : "Clean"}
                 </span>
               ) : null}
               {hasSave ? (
-                <span className="rounded bg-white/10 px-2 py-1 text-xs">
+                <span className="m3-chip bg-[var(--surface-container-high)] px-2 py-1 text-xs">
                   DLC: {formatDlcSummary(dlcIds)}
                 </span>
               ) : null}
@@ -334,10 +333,10 @@ export default function AppShell({ children }) {
               {progressMessage ? <span>Progress: {progressMessage}</span> : null}
             </div>
             {error?.message ? (
-              <div className="mt-3 rounded-lg border border-red-500/35 bg-red-500/10 p-3 text-sm">
-                <p className="font-semibold text-red-200">{errorGuidance.title}</p>
-                <p className="mt-1 text-xs text-red-100/90">{errorGuidance.detail}</p>
-                <p className="mt-1 text-xs text-red-100/90">
+              <div className="mt-3 rounded-lg border border-red-300/40 bg-[var(--error-surface)] p-3 text-sm">
+                <p className="font-semibold text-[var(--error)]">{errorGuidance.title}</p>
+                <p className="mt-1 text-xs text-[var(--error)]/90">{errorGuidance.detail}</p>
+                <p className="mt-1 text-xs text-[var(--error)]/90">
                   {error.message}
                   {error.code ? (
                     <>
@@ -352,7 +351,7 @@ export default function AppShell({ children }) {
                       type="button"
                       onClick={retryLoadPendingFile}
                       disabled={isBusy}
-                      className="rounded-md border border-red-200/50 px-2 py-1 text-xs font-semibold text-red-100 hover:bg-red-500/20 disabled:opacity-50"
+                      className="m3-button m3-button-outlined border-red-200/60 px-2 py-1 text-xs text-[var(--error)]"
                     >
                       Retry ({lastLoadAttemptStrictness})
                     </button>
@@ -362,7 +361,7 @@ export default function AppShell({ children }) {
                       type="button"
                       onClick={forceLoadPendingFile}
                       disabled={isBusy}
-                      className="rounded-md border border-red-200/50 px-2 py-1 text-xs font-semibold text-red-100 hover:bg-red-500/20 disabled:opacity-50"
+                      className="m3-button m3-button-outlined border-red-200/60 px-2 py-1 text-xs text-[var(--error)]"
                     >
                       Force Load (major)
                     </button>
@@ -370,7 +369,7 @@ export default function AppShell({ children }) {
                   <button
                     type="button"
                     onClick={clearError}
-                    className="rounded-md border border-red-200/50 px-2 py-1 text-xs font-semibold text-red-100 hover:bg-red-500/20"
+                    className="m3-button m3-button-outlined border-red-200/60 px-2 py-1 text-xs text-[var(--error)]"
                   >
                     Dismiss
                   </button>
@@ -384,9 +383,15 @@ export default function AppShell({ children }) {
               className="hidden"
               onChange={onFileChange}
             />
-          </header>
-          <main className="flex-1 px-4 py-6 sm:px-6">{children}</main>
+            </header>
+            <main className="flex-1 overflow-auto bg-[var(--surface-container)] px-4 py-6 sm:px-6">
+              {children}
+            </main>
+          </div>
         </div>
+        <footer className="m3-surface mt-3 px-4 py-3 text-center text-xs opacity-80 sm:px-6">
+          Rewritten by cLonata with ♥
+        </footer>
       </div>
     </div>
   );

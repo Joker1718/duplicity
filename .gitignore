@@ -44,3 +44,6 @@ next-env.d.ts
 # default from RoboPhred
 dist/
 **/Thumbs.db
+
+# cLonata defined
+/references

@@ -303,14 +303,7 @@ export default function RawEditorPage() {
   }
 
   return (
-    <section className="space-y-4">
-      <header className="rounded-xl border border-white/20 p-4">
-        <h1 className="text-2xl font-semibold">Raw Editor</h1>
-        <p className="mt-1 text-sm opacity-75">
-          Object tree navigation with primitive field editing.
-        </p>
-      </header>
-
+    <section>
       <div className="grid gap-4 lg:grid-cols-[360px,1fr]">
         <aside className="max-h-[70vh] overflow-auto rounded-xl border border-white/20 p-3">
           <RawTreeNode

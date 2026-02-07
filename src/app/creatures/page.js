@@ -15,7 +15,7 @@ function formatPosition(position) {
 
 function CreatureCard({ creature, onSelect }) {
   return (
-    <article className="w-full rounded-lg border border-black/10 p-4 dark:border-white/15 xl:w-[360px]">
+    <article className="w-full rounded-lg border border-black/10 p-4 dark:border-white/15">
       <div className="flex items-start gap-2">
         <div>
           <h2 className="text-lg font-semibold">{creature.type}</h2>
@@ -67,17 +67,12 @@ export default function CreaturesPage() {
 
   return (
     <section>
-      <h1 className="text-2xl font-semibold">Creatures</h1>
-      <p className="mt-2 text-sm opacity-75">
-        List of creature entities from parsed save data.
-      </p>
-
       {creatures.length === 0 ? (
-        <p className="mt-4 rounded-md border border-black/10 p-3 text-sm opacity-75 dark:border-white/15">
+        <p className="rounded-md border border-black/10 p-3 text-sm opacity-75 dark:border-white/15">
           No creature entities found in this save.
         </p>
       ) : (
-        <div className="mt-4 flex flex-wrap gap-3">
+        <div className="grid w-full gap-3 md:grid-cols-2 xl:grid-cols-3">
           {creatures.map((creature) => (
             <CreatureCard
               key={creature.id}

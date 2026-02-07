@@ -160,13 +160,6 @@ export default function OverviewPage() {
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold sm:text-3xl">Overview</h1>
-        <p className="mt-2 text-sm opacity-75">
-          V4 migration baseline: core save session, load/save pipeline, and overview states.
-        </p>
-      </div>
-
       {!session.hasSave && session.status !== "error" ? <NoSaveState /> : null}
 
       {session.status === "error" ? (

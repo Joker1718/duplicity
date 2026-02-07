@@ -130,14 +130,7 @@ export default function GeysersPage() {
   }
 
   return (
-    <section className="space-y-4">
-      <header className="rounded-xl border border-white/20 p-4">
-        <h1 className="text-2xl font-semibold">Geysers</h1>
-        <p className="mt-1 text-sm opacity-75">
-          V3 parity: list by type, type swap, and core geyser parameter editing.
-        </p>
-      </header>
-
+    <section>
       {geysers.length === 0 ? (
         <p className="rounded-xl border border-white/20 p-4 text-sm opacity-75">
           No geysers found in this save.

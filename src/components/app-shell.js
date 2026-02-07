@@ -17,43 +17,38 @@ const NAV_ITEMS = [
 ];
 
 function getPageTitle(pathname) {
-  if (!pathname || pathname === "/") {
-    return "Overview";
+  const normalizedPathname =
+    !pathname || pathname === "/"
+      ? "/"
+      : pathname.endsWith("/")
+        ? pathname.slice(0, -1)
+        : pathname;
+
+  if (normalizedPathname === "/") {
+    return "Duplicity V4";
   }
-  if (pathname.startsWith("/duplicants/")) {
-    return "Edit Duplicant";
+  if (normalizedPathname.startsWith("/duplicants")) {
+    return "Duplicants Management";
   }
-  if (pathname.startsWith("/creatures/")) {
-    return "Edit Creature";
+  if (normalizedPathname.startsWith("/creatures")) {
+    return "Creatures Management";
   }
-  if (pathname === "/duplicants-editor") {
-    return "Edit Duplicant";
+  if (normalizedPathname.startsWith("/geysers")) {
+    return "Geysers Management";
   }
-  if (pathname === "/creatures-editor") {
-    return "Edit Creature";
+  if (normalizedPathname.startsWith("/planets")) {
+    return "Planets Management";
   }
-  if (pathname === "/duplicants") {
-    return "Duplicants";
+  if (normalizedPathname.startsWith("/materials")) {
+    return "Materials Management";
   }
-  if (pathname === "/creatures") {
-    return "Creatures";
-  }
-  if (pathname === "/geysers") {
-    return "Geysers";
-  }
-  if (pathname === "/planets") {
-    return "Planets";
-  }
-  if (pathname === "/materials") {
-    return "Materials";
-  }
-  if (pathname === "/raw") {
+  if (normalizedPathname.startsWith("/raw")) {
     return "Raw Editor";
   }
-  if (pathname === "/settings") {
+  if (normalizedPathname.startsWith("/settings")) {
     return "Settings";
   }
-  if (pathname === "/changelog") {
+  if (normalizedPathname.startsWith("/changelog")) {
     return "Changelog";
   }
   return "Duplicity V4";
@@ -80,14 +75,14 @@ function readDlcIds(saveGame) {
   return [];
 }
 
-function formatDlcSummary(dlcIds) {
-  if (!Array.isArray(dlcIds) || dlcIds.length === 0) {
-    return "Base Game";
-  }
-  if (dlcIds.length <= 2) {
-    return dlcIds.join(", ");
-  }
-  return `${dlcIds[0]}, ${dlcIds[1]} +${dlcIds.length - 2}`;
+function getDlcDisplayName(dlcId) {
+  const names = {
+    EXPANSION1_ID: "Spaced Out!",
+    DLC2_ID: "DLC 2",
+    DLC3_ID: "DLC 3",
+    DLC4_ID: "DLC 4",
+  };
+  return names[dlcId] || dlcId;
 }
 
 function getErrorGuidance(error) {
@@ -186,7 +181,6 @@ export default function AppShell({ children }) {
   const [strictness, setStrictness] = useState("major");
   const {
     status,
-    progressMessage,
     error,
     hasSave,
     saveGame,
@@ -206,6 +200,16 @@ export default function AppShell({ children }) {
   } = useSaveSession();
 
   const dlcIds = useMemo(() => readDlcIds(saveGame), [saveGame]);
+  const dlcNames = useMemo(() => dlcIds.map(getDlcDisplayName), [dlcIds]);
+  const dlcHoverText = useMemo(() => {
+    if (!hasSave) {
+      return "Load a save to read DLC information.";
+    }
+    if (dlcNames.length === 0) {
+      return "No DLC detected.";
+    }
+    return dlcNames.join("\n");
+  }, [dlcNames, hasSave]);
   const errorGuidance = useMemo(() => getErrorGuidance(error), [error]);
 
   const onLoadButtonClick = () => {
@@ -227,7 +231,7 @@ export default function AppShell({ children }) {
     <div className="h-dvh overflow-hidden bg-background text-foreground">
       <LoadingDialog
         status={status}
-        message={progressMessage}
+        message=""
         fileName={pendingFile?.name || fileName}
       />
       <ImportWarningDialog
@@ -235,12 +239,12 @@ export default function AppShell({ children }) {
         onCancel={() => confirmImportWarning(false)}
         onConfirm={() => confirmImportWarning(true)}
       />
-      <div className="mx-auto flex h-full w-full max-w-7xl flex-col p-3">
+      <div className="mx-auto flex h-full w-full max-w-[1432px] flex-col p-3">
         <div className="flex min-h-0 flex-1 gap-4">
           <aside className="m3-surface hidden h-full w-64 overflow-y-auto p-4 md:block">
           <h1 className="text-lg font-semibold">Duplicity</h1>
-          <p className="mt-1 text-xs opacity-70">V4 Migration</p>
-          <nav className="mt-6 space-y-1">
+          <p className="mt-2 text-xs uppercase tracking-wide opacity-70">Status: {status}</p>
+          <nav className="mt-5 space-y-1">
             {NAV_ITEMS.map((item) => {
               const saveLocked = item.saveRequired && !hasSave;
               const disabled = saveLocked || item.implemented === false;
@@ -275,7 +279,7 @@ export default function AppShell({ children }) {
           </nav>
           </aside>
 
-          <div className="m3-surface flex min-h-0 w-full flex-col overflow-hidden">
+          <div className="m3-surface flex min-h-0 w-full flex-col overflow-hidden md:max-w-[1136px]">
             <header className="border-b border-[var(--outline)] bg-[var(--surface)] px-4 py-3 sm:px-6">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="mr-auto text-lg font-semibold">{pageTitle}</h2>
@@ -311,26 +315,6 @@ export default function AppShell({ children }) {
                 <option value="minor">minor</option>
                 <option value="none">none</option>
               </select>
-              {hasSave ? (
-                <span
-                  className={`m3-chip px-2 py-1 text-xs ${
-                    isModified
-                      ? "border-amber-300/50 bg-amber-500/15 text-[var(--warning)]"
-                      : "border-emerald-300/45 bg-emerald-500/12 text-[var(--success)]"
-                  }`}
-                >
-                  {isModified ? "Modified" : "Clean"}
-                </span>
-              ) : null}
-              {hasSave ? (
-                <span className="m3-chip bg-[var(--surface-container-high)] px-2 py-1 text-xs">
-                  DLC: {formatDlcSummary(dlcIds)}
-                </span>
-              ) : null}
-            </div>
-            <div className="mt-2 flex flex-wrap items-center gap-3 text-xs opacity-80">
-              <span>Status: {status}</span>
-              {progressMessage ? <span>Progress: {progressMessage}</span> : null}
             </div>
             {error?.message ? (
               <div className="mt-3 rounded-lg border border-red-300/40 bg-[var(--error-surface)] p-3 text-sm">
@@ -384,13 +368,42 @@ export default function AppShell({ children }) {
               onChange={onFileChange}
             />
             </header>
-            <main className="flex-1 overflow-auto bg-[var(--surface-container)] px-4 py-6 sm:px-6">
+            <main className="flex-1 overflow-auto bg-[var(--surface-container)] px-4 py-6">
               {children}
             </main>
           </div>
         </div>
-        <footer className="m3-surface mt-3 px-4 py-3 text-center text-xs opacity-80 sm:px-6">
-          Rewritten by cLonata with ♥
+        <footer className="m3-surface mt-3 px-4 py-3 text-xs opacity-80 sm:px-6">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span
+              className="m3-chip bg-[var(--surface-container-high)] px-2 py-1"
+              title={dlcHoverText}
+            >
+              DLC Found: {hasSave ? dlcNames.length : 0}
+            </span>
+            <span className="mx-auto text-center">Rewritten by cLonata with ♥</span>
+            <span
+              className={`m3-chip px-2 py-1 ${
+                isModified
+                  ? "border-[var(--outline-strong)] bg-[var(--state-hover)]"
+                  : "border-emerald-300/45 bg-emerald-500/12 text-[var(--success)]"
+              }`}
+            >
+              {hasSave ? (
+                <>
+                  <span>Save File: </span>
+                  <span
+                    className={isModified ? "font-bold" : ""}
+                    style={isModified ? { color: "var(--accent)" } : undefined}
+                  >
+                    {isModified ? "Modified" : "Clean"}
+                  </span>
+                </>
+              ) : (
+                "Save File: Not Loaded"
+              )}
+            </span>
+          </div>
         </footer>
       </div>
     </div>

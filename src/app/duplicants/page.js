@@ -9,7 +9,7 @@ import { selectDuplicants } from "@/lib/oni/save-selectors";
 
 function DuplicantCard({ duplicant, onSelect }) {
   return (
-    <article className="w-full rounded-lg border border-black/10 p-4 dark:border-white/15 xl:w-[360px]">
+    <article className="w-full rounded-lg border border-black/10 p-4 dark:border-white/15">
       <div className="flex items-start gap-2">
         <div>
           <h2 className="text-lg font-semibold">{duplicant.name}</h2>
@@ -76,17 +76,12 @@ export default function DuplicantsPage() {
 
   return (
     <section>
-      <h1 className="text-2xl font-semibold">Duplicants</h1>
-      <p className="mt-2 text-sm opacity-75">
-        Ported from V3 list behavior using real parsed save data.
-      </p>
-
       {duplicants.length === 0 ? (
-        <p className="mt-4 rounded-md border border-black/10 p-3 text-sm opacity-75 dark:border-white/15">
+        <p className="rounded-md border border-black/10 p-3 text-sm opacity-75 dark:border-white/15">
           No duplicants found in this save.
         </p>
       ) : (
-        <div className="mt-4 flex flex-wrap gap-3">
+        <div className="grid w-full gap-3 md:grid-cols-2 xl:grid-cols-3">
           {duplicants.map((duplicant) => (
             <DuplicantCard
               key={duplicant.id}

@@ -16,7 +16,7 @@ function DuplicantCard({ duplicant }) {
         </div>
         <Link
           href="/duplicants-editor"
-          className="ml-auto rounded-md border border-black/20 px-2 py-1 text-xs font-semibold hover:bg-black/5 dark:border-white/25 dark:hover:bg-white/10"
+          className="ml-auto rounded-md border border-white/25 px-2 py-1 text-xs font-semibold hover:bg-white/10"
         >
           Edit
         </Link>

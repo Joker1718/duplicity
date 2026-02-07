@@ -132,7 +132,7 @@ export default function AppShell({ children }) {
               <h2 className="mr-auto text-lg font-semibold">{pageTitle}</h2>
               <Link
                 href="/settings"
-                className="rounded-md border border-black/20 px-3 py-2 text-sm hover:bg-black/5 dark:border-white/25 dark:hover:bg-white/10"
+                className="rounded-md border border-white/25 px-3 py-2 text-sm hover:bg-white/10"
               >
                 Settings
               </Link>
@@ -140,7 +140,7 @@ export default function AppShell({ children }) {
                 type="button"
                 onClick={onLoadButtonClick}
                 disabled={isBusy}
-                className="rounded-md border border-black/20 px-3 py-2 text-sm font-semibold hover:bg-black/5 disabled:opacity-50 dark:border-white/25 dark:hover:bg-white/10"
+                className="rounded-md border border-white/25 px-3 py-2 text-sm font-semibold hover:bg-white/10 disabled:opacity-50"
               >
                 Load Save
               </button>
@@ -148,14 +148,14 @@ export default function AppShell({ children }) {
                 type="button"
                 onClick={() => saveCurrentFile()}
                 disabled={isBusy || !hasSave}
-                className="rounded-md bg-black px-3 py-2 text-sm font-semibold text-white hover:bg-black/85 disabled:opacity-50 dark:bg-white dark:text-black dark:hover:bg-white/85"
+                className="rounded-md bg-[var(--accent)] px-3 py-2 text-sm font-semibold text-black hover:brightness-110 disabled:opacity-50"
               >
                 Save
               </button>
               <select
                 value={strictness}
                 onChange={(event) => setStrictness(event.target.value)}
-                className="rounded-md border border-black/20 bg-transparent px-2 py-2 text-sm dark:border-white/25"
+                className="rounded-md border border-white/25 bg-black px-2 py-2 text-sm"
                 title="Parser version strictness"
               >
                 <option value="major">major</option>

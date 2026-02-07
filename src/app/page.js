@@ -130,7 +130,7 @@ function ReadyState({ summary, difficultyOptions, difficulty, onUpdateDifficulty
                   onChange={(event) =>
                     onUpdateDifficulty(settingName, event.target.value)
                   }
-                  className="rounded-md border border-black/15 bg-transparent px-2 py-2 text-sm dark:border-white/20"
+                  className="rounded-md border border-white/25 bg-black px-2 py-2 text-sm"
                 >
                   {options.map((value) => (
                     <option key={value} value={value}>

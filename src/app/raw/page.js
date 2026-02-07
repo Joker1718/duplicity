@@ -303,9 +303,35 @@ export default function RawEditorPage() {
   }
 
   return (
-    <section>
-      <div className="grid gap-4 lg:grid-cols-[360px,1fr]">
-        <aside className="max-h-[70vh] overflow-auto rounded-xl border border-white/20 p-3">
+    <section className="flex h-full min-h-0 flex-col gap-4">
+      <nav className="shrink-0 rounded-xl border border-white/20 p-3 text-xs">
+        <button
+          type="button"
+          onClick={() => setSelectedPath([])}
+          className="rounded px-2 py-1 hover:bg-white/10"
+        >
+          root
+        </button>
+        {selectedPath.map((segment, index) => {
+          const segmentPath = selectedPath.slice(0, index + 1);
+          const label = getRawSegmentName(saveGame, segmentPath) || segment;
+          return (
+            <span key={`${segment}-${index}`}>
+              <span className="px-1 opacity-50">/</span>
+              <button
+                type="button"
+                onClick={() => setSelectedPath(segmentPath)}
+                className="rounded px-2 py-1 hover:bg-white/10"
+              >
+                {label}
+              </button>
+            </span>
+          );
+        })}
+      </nav>
+
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-[360px_minmax(0,1fr)]">
+        <aside className="h-full min-h-0 overflow-auto rounded-xl border border-white/20 p-3">
           <RawTreeNode
             saveGame={saveGame}
             path={[]}
@@ -315,45 +341,19 @@ export default function RawEditorPage() {
           />
         </aside>
 
-        <div className="space-y-3">
-          <nav className="rounded-xl border border-white/20 p-3 text-xs">
-            <button
-              type="button"
-              onClick={() => setSelectedPath([])}
-              className="rounded px-2 py-1 hover:bg-white/10"
-            >
-              root
-            </button>
-            {selectedPath.map((segment, index) => {
-              const segmentPath = selectedPath.slice(0, index + 1);
-              const label = getRawSegmentName(saveGame, segmentPath) || segment;
-              return (
-                <span key={`${segment}-${index}`}>
-                  <span className="px-1 opacity-50">/</span>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedPath(segmentPath)}
-                    className="rounded px-2 py-1 hover:bg-white/10"
-                  >
-                    {label}
-                  </button>
-                </span>
-              );
-            })}
-          </nav>
-
-          <section className="rounded-xl border border-white/20 p-4">
-            <h2 className="text-lg font-semibold">Primitive Fields</h2>
+        <section className="flex h-full min-h-0 flex-col rounded-xl border border-white/20 p-4">
+          <h2 className="text-lg font-semibold">Primitive Fields</h2>
+          <div className="mt-3 min-h-0 flex-1 overflow-auto">
             {!isObjectLike(target) ? (
-              <p className="mt-2 text-sm opacity-80">
+              <p className="text-sm opacity-80">
                 Selected value is not an object. Navigate to an object node to edit fields.
               </p>
             ) : primitiveFields.length === 0 ? (
-              <p className="mt-2 text-sm opacity-80">
+              <p className="text-sm opacity-80">
                 No primitive fields on this node.
               </p>
             ) : (
-              <div className="mt-3 space-y-2">
+              <div className="space-y-2">
                 {primitiveFields.map((field) => (
                   <PrimitiveValueEditor
                     key={field.key}
@@ -374,8 +374,8 @@ export default function RawEditorPage() {
                 ) : null}
               </div>
             )}
-          </section>
-        </div>
+          </div>
+        </section>
       </div>
     </section>
   );

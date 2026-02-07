@@ -47,3 +47,10 @@ dist/
 
 # cLonata defined
 /references
+
+# cLonata: oni-save-parser workspace
+/packages/oni-save-parser/node_modules/
+/packages/oni-save-parser/.vscode/
+/packages/oni-save-parser/test-data/
+/packages/oni-save-parser/lib/tsconfig.tsbuildinfo
+/packages/oni-save-parser/package-lock.json

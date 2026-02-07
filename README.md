@@ -57,3 +57,6 @@ Then submit them in a new issue or pull request.
 
 The actual save file serialization and parsing is powered by the excellent [oni-save-parser](https://github.com/RoboPhred/oni-save-parser) library.  
 Feel free to use it in your own projects as well!
+
+By default, Duplicity uses `major` version strictness when parsing saves.
+This keeps support best-effort for newer minor save versions within the same major format.

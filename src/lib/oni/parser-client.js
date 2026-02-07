@@ -16,7 +16,9 @@ function normalizeBuffer(data) {
     return data;
   }
   if (ArrayBuffer.isView(data)) {
-    return data.buffer;
+    const start = data.byteOffset;
+    const end = start + data.byteLength;
+    return data.buffer.slice(start, end);
   }
   throw new Error("Expected ArrayBuffer or TypedArray.");
 }
@@ -83,12 +85,19 @@ function createClient() {
     });
   }
 
+  function makeWorkerOptions(options = {}) {
+    return {
+      versionStrictness: options.versionStrictness,
+      reportProgress: Boolean(options.reportProgress),
+    };
+  }
+
   return {
     parseSave(buffer, options = {}) {
       const data = normalizeBuffer(buffer);
       return request(
         "parse",
-        { buffer: data, options },
+        { buffer: data, options: makeWorkerOptions(options) },
         {
           transfer: [data],
           onProgress: options.onProgress,
@@ -96,7 +105,11 @@ function createClient() {
       );
     },
     writeSave(saveGame, options = {}) {
-      return request("write", { saveGame, options }, { onProgress: options.onProgress });
+      return request(
+        "write",
+        { saveGame, options: makeWorkerOptions(options) },
+        { onProgress: options.onProgress }
+      );
     },
     terminate() {
       worker.terminate();

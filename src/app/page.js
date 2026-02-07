@@ -1,103 +1,191 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useMemo } from "react";
+import { useSaveSession } from "@/lib/save-session/save-session-context";
+import { selectDifficultySettings } from "@/lib/oni/save-selectors";
+
+const SAVE_PATHS = {
+  windows: "C:\\Users\\<Your Username>\\Documents\\Klei\\OxygenNotIncluded\\save_files\\",
+  mac: "~/Library/Application Support/unity.Klei.Oxygen Not Included/save_files/",
+  linux: "~/.config/unity3d/Klei/Oxygen Not Included/save_files/",
+};
+
+function formatBytes(bytes) {
+  if (!Number.isFinite(bytes) || bytes < 0) {
+    return "N/A";
+  }
+  if (bytes < 1024) {
+    return `${bytes} B`;
+  }
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(1)} KB`;
+  }
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+function makeOverviewSummary(session) {
+  const gameInfo = session.saveGame?.header?.gameInfo ?? {};
+  return {
+    fileName: session.fileName ?? "Unknown",
+    parseTimeMs: session.parseTimeMs ?? "Unknown",
+    colony: gameInfo.baseName ?? "Unknown",
+    cycles: gameInfo.numberOfCycles ?? "Unknown",
+    duplicants: gameInfo.numberOfDuplicants ?? "Unknown",
+    version: `${gameInfo.saveMajorVersion ?? "?"}.${gameInfo.saveMinorVersion ?? "?"}`,
+    cluster: gameInfo.clusterId ?? "Unknown",
+    autoSave: Boolean(gameInfo.isAutoSave),
+    dlcIds: Array.isArray(gameInfo.dlcIds) ? gameInfo.dlcIds : [],
+    lastWrittenBytes: formatBytes(session.lastWrittenBytes),
+  };
+}
+
+function NoSaveState() {
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.js
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <section className="rounded-xl border border-black/10 p-5 dark:border-white/15">
+      <h3 className="text-xl font-semibold">No Save Loaded</h3>
+      <p className="mt-2 text-sm opacity-80">
+        Use <strong>Load Save</strong> in the top bar to open a `.sav` file.
+      </p>
+      <div className="mt-4 space-y-2 text-sm opacity-80">
+        <p>Common save file locations:</p>
+        <p>
+          Windows: <code>{SAVE_PATHS.windows}</code>
+        </p>
+        <p>
+          macOS: <code>{SAVE_PATHS.mac}</code>
+        </p>
+        <p>
+          Linux: <code>{SAVE_PATHS.linux}</code>
+        </p>
+      </div>
+    </section>
+  );
+}
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+function ErrorState({ error, canForceLoad, forceLoadPendingFile, pendingFileName }) {
+  const isMajorMismatch = error?.code === "E_VERSION_MAJOR";
+  const isMinorMismatch = error?.code === "E_VERSION_MINOR";
+
+  return (
+    <section className="rounded-xl border border-red-500/30 bg-red-500/10 p-5">
+      <h3 className="text-xl font-semibold text-red-800 dark:text-red-200">
+        Failed To Load Save
+      </h3>
+      {pendingFileName ? (
+        <p className="mt-2 text-xs text-red-700/80 dark:text-red-300/80">
+          File: <code>{pendingFileName}</code>
+        </p>
+      ) : null}
+      <p className="mt-2 text-sm text-red-700 dark:text-red-300">
+        {error?.message || "Unknown parsing error."}
+      </p>
+      {isMajorMismatch ? (
+        <p className="mt-2 text-sm text-red-700 dark:text-red-300">
+          This save appears to use a different major ONI save format and is likely incompatible
+          with the current parser.
+        </p>
+      ) : null}
+      {isMinorMismatch ? (
+        <p className="mt-2 text-sm text-red-700 dark:text-red-300">
+          Minor version mismatch detected. You can try force-loading with major strictness.
+        </p>
+      ) : null}
+      {error?.code ? (
+        <p className="mt-2 text-xs text-red-700/80 dark:text-red-300/80">
+          Error code: <code>{error.code}</code>
+        </p>
+      ) : null}
+      {canForceLoad ? (
+        <button
+          type="button"
+          onClick={forceLoadPendingFile}
+          className="mt-4 rounded-md border border-red-700/40 px-3 py-2 text-sm font-semibold text-red-800 hover:bg-red-500/15 dark:text-red-100"
+        >
+          Override safety check and load with major strictness
+        </button>
+      ) : null}
+    </section>
+  );
+}
+
+function ReadyState({ summary, difficultyOptions, difficulty, onUpdateDifficulty }) {
+  const settingOrder = Object.keys(difficultyOptions);
+
+  return (
+    <section className="rounded-xl border border-black/10 p-5 dark:border-white/15">
+      <h3 className="text-xl font-semibold">Save Overview</h3>
+      <div className="mt-4 rounded-md border border-black/10 p-3 dark:border-white/15">
+        <h4 className="text-sm font-semibold uppercase tracking-wide opacity-80">
+          Difficulty
+        </h4>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          {settingOrder.map((settingName) => {
+            const options = difficultyOptions[settingName] || [];
+            const selected = difficulty[settingName] ?? options[0] ?? "";
+            return (
+              <label key={settingName} className="flex flex-col gap-1 text-sm">
+                <span className="opacity-80">{settingName}</span>
+                <select
+                  value={selected}
+                  onChange={(event) =>
+                    onUpdateDifficulty(settingName, event.target.value)
+                  }
+                  className="rounded-md border border-black/15 bg-transparent px-2 py-2 text-sm dark:border-white/20"
+                >
+                  {options.map((value) => (
+                    <option key={value} value={value}>
+                      {value}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            );
+          })}
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </div>
+      <pre className="mt-4 overflow-auto rounded-md bg-black/5 p-3 text-xs dark:bg-white/10">
+        {JSON.stringify(summary, null, 2)}
+      </pre>
+    </section>
+  );
+}
+
+export default function OverviewPage() {
+  const session = useSaveSession();
+  const summary = useMemo(() => makeOverviewSummary(session), [session]);
+  const { optionsBySetting, selectedValues } = useMemo(
+    () => selectDifficultySettings(session.saveGame),
+    [session.saveGame]
+  );
+
+  return (
+    <div className="mx-auto w-full max-w-4xl space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold sm:text-3xl">Overview</h1>
+        <p className="mt-2 text-sm opacity-75">
+          V4 migration baseline: core save session, load/save pipeline, and overview states.
+        </p>
+      </div>
+
+      {!session.hasSave && session.status !== "error" ? <NoSaveState /> : null}
+
+      {session.status === "error" ? (
+        <ErrorState
+          error={session.error}
+          canForceLoad={session.canForceLoad}
+          forceLoadPendingFile={session.forceLoadPendingFile}
+          pendingFileName={session.pendingFile?.name}
+        />
+      ) : null}
+
+      {session.hasSave ? (
+        <ReadyState
+          summary={summary}
+          difficultyOptions={optionsBySetting}
+          difficulty={selectedValues}
+          onUpdateDifficulty={session.updateDifficultySetting}
+        />
+      ) : null}
     </div>
   );
 }

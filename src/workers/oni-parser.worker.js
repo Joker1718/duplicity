@@ -2,7 +2,7 @@ import {
   parseSaveGame,
   progressReporter,
   writeSaveGame,
-} from "@cLonata/oni-save-parser";
+} from "@clonata/oni-save-parser";
 
 self.addEventListener("message", (event) => {
   const message = event.data;
@@ -38,7 +38,7 @@ function handleParse(id, payload) {
     : undefined;
 
   const save = parseSaveGame(payload.buffer, {
-    versionStrictness: options.versionStrictness || "minor",
+    versionStrictness: options.versionStrictness || "major",
     interceptor,
   });
 

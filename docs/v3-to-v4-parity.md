@@ -42,15 +42,15 @@ Present but disabled in V3 routes:
 - [x] Save download flow after write (`src/app/page.js`)
 - [x] Default parse strictness fallback = `major` for best-effort newer minor versions (`src/workers/oni-parser.worker.js`)
 - [x] Force-load flow for minor version mismatch (V3 behavior in `pages/OverviewPage/components/SaveError/component.tsx`)
-- [-] Loading/saving progress UI parity (V3 `components/LoadingDialog/component.tsx`)
+- [x] Loading/saving progress UI parity (V3 `components/LoadingDialog/component.tsx`)
 - [x] Central save session state model for `idle/loading/saving/ready/error` (V3 `services/oni-save/state.ts`)
-- [-] Parse/write error surface parity (include parser error code handling)
+- [x] Parse/write error surface parity (include parser error code handling)
 
 ### App Shell and Navigation
 
-- [-] Sidebar + nav item parity from `nav-links.ts` with save-required gating
-- [-] Top app bar parity: load, save, modified indicator, DLC indicator, settings
-- [-] Route parity for all route-enabled V3 pages
+- [x] Sidebar + nav item parity from `nav-links.ts` with save-required gating
+- [x] Top app bar parity: load, save, modified indicator, DLC indicator, settings
+- [x] Route parity for all route-enabled V3 pages
 - [x] Settings route reachable from shell
 - [x] Changelog route reachable from shell
 
@@ -63,42 +63,42 @@ Present but disabled in V3 routes:
 ### Duplicants Domain
 
 - [x] Duplicant list page parity (`pages/DuplicantsPage`)
-- [ ] Duplicant detail route + not-found handling (`pages/DuplicantEditorPage`)
-- [ ] Duplicant name editing
-- [ ] Traits editing (add/remove)
-- [ ] Interests editing (add/remove)
-- [ ] Attributes editing
-- [ ] Appearance editing
-- [ ] Health editing
-- [ ] Skills editing (experience/masteries)
-- [ ] Effects editing (add/remove)
-- [ ] Duplicant menu actions parity:
-- [ ] Copy behaviors
-- [ ] Paste behaviors
-- [ ] Import behaviors from JSON
-- [ ] Export behaviors to JSON
-- [ ] Clone duplicant
-- [ ] Import checksum warning dialog parity
+- [x] Duplicant detail route + not-found handling (`pages/DuplicantEditorPage`)
+- [x] Duplicant name editing
+- [x] Traits editing (add/remove)
+- [x] Interests editing (add/remove)
+- [x] Attributes editing
+- [x] Appearance editing
+- [x] Health editing
+- [x] Skills editing (experience/masteries)
+- [x] Effects editing (add/remove)
+- [x] Duplicant menu actions parity:
+- [x] Copy behaviors
+- [x] Paste behaviors
+- [x] Import behaviors from JSON
+- [x] Export behaviors to JSON
+- [x] Clone duplicant
+- [x] Import checksum warning dialog parity
 
 ### Geysers Domain
 
-- [ ] Geyser list by type
-- [ ] Change geyser type
-- [ ] Change emission rate
-- [ ] Change lifecycle length
-- [ ] Change active fraction
-- [ ] Change emission fraction
+- [x] Geyser list by type
+- [x] Change geyser type
+- [x] Change emission rate
+- [x] Change lifecycle length
+- [x] Change active fraction
+- [x] Change emission fraction
 
 ### Raw Editor Domain
 
-- [ ] Raw object tree navigation
-- [ ] Breadcrumb navigation
-- [ ] Object editor dispatch by field type
-- [ ] Primitive field editors parity: string, number, boolean
+- [x] Raw object tree navigation
+- [x] Breadcrumb navigation
+- [x] Object editor dispatch by field type
+- [x] Primitive field editors parity: string, number, boolean
 
 ### Creatures Domain
 
-- [ ] Creature list page parity
+- [x] Creature list page parity
 - [~] Creature editor parity (V3 itself says "Not Implemented")
 
 ### Settings and i18n
@@ -135,13 +135,13 @@ Source refs:
 - [ ] `modify-behavior`
 - [ ] `modify-behavior-path`
 - [ ] `merge-behaviors`
-- [ ] `copy-behaviors`
-- [ ] `paste-behaviors`
-- [ ] `import-behaviors`
-- [ ] `export-behaviors`
-- [ ] `clone-duplicant`
-- [ ] `change-geyser-type`
-- [ ] `change-geyser-parameter`
+- [x] `copy-behaviors`
+- [x] `paste-behaviors`
+- [x] `import-behaviors`
+- [x] `export-behaviors`
+- [x] `clone-duplicant`
+- [x] `change-geyser-type`
+- [x] `change-geyser-parameter`
 - [ ] `modify-difficulty`
 - [ ] `modify-planet`
 - [ ] `delete-loose-material`

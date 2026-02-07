@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { useMemo } from "react";
 import SaveRequiredPage from "@/components/save-required-page";
+import DuplicantActionsPanel from "@/components/duplicant-actions-panel";
 import { useSaveSession } from "@/lib/save-session/save-session-context";
 import { selectDuplicants } from "@/lib/oni/save-selectors";
 
-function DuplicantCard({ duplicant }) {
+function DuplicantCard({ duplicant, onSelect }) {
   return (
     <article className="w-full rounded-lg border border-black/10 p-4 dark:border-white/15 xl:w-[360px]">
       <div className="flex items-start gap-2">
@@ -15,7 +16,8 @@ function DuplicantCard({ duplicant }) {
           <p className="text-xs opacity-70">Game Object ID: {duplicant.id}</p>
         </div>
         <Link
-          href="/duplicants-editor"
+          href={`/duplicants-editor?id=${duplicant.id}`}
+          onClick={() => onSelect(duplicant.id)}
           className="ml-auto rounded-md border border-white/25 px-2 py-1 text-xs font-semibold hover:bg-white/10"
         >
           Edit
@@ -51,12 +53,16 @@ function DuplicantCard({ duplicant }) {
           ))}
         </div>
       </div>
+
+      <div className="mt-3 border-t border-black/10 pt-3 dark:border-white/15">
+        <DuplicantActionsPanel duplicantId={duplicant.id} duplicantName={duplicant.name} />
+      </div>
     </article>
   );
 }
 
 export default function DuplicantsPage() {
-  const { saveGame, hasSave } = useSaveSession();
+  const { saveGame, hasSave, setSelectedDuplicantId } = useSaveSession();
   const duplicants = useMemo(() => selectDuplicants(saveGame), [saveGame]);
 
   if (!hasSave) {
@@ -82,7 +88,11 @@ export default function DuplicantsPage() {
       ) : (
         <div className="mt-4 flex flex-wrap gap-3">
           {duplicants.map((duplicant) => (
-            <DuplicantCard key={duplicant.id} duplicant={duplicant} />
+            <DuplicantCard
+              key={duplicant.id}
+              duplicant={duplicant}
+              onSelect={setSelectedDuplicantId}
+            />
           ))}
         </div>
       )}

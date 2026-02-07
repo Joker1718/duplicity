@@ -8,7 +8,7 @@ export default function SaveRequiredPage({ title, description }) {
 
   if (!hasSave) {
     return (
-      <section className="rounded-xl border border-black/10 p-5 dark:border-white/15">
+      <section className="rounded-xl border border-white/20 p-5">
         <h1 className="text-2xl font-semibold">{title}</h1>
         <p className="mt-2 text-sm opacity-80">
           Load a save first using <strong>Load Save</strong> in the top bar.
@@ -21,7 +21,7 @@ export default function SaveRequiredPage({ title, description }) {
   }
 
   return (
-    <section className="rounded-xl border border-black/10 p-5 dark:border-white/15">
+    <section className="rounded-xl border border-white/20 p-5">
       <h1 className="text-2xl font-semibold">{title}</h1>
       <p className="mt-2 text-sm opacity-80">{description}</p>
       <p className="mt-3 text-sm opacity-70">Migration placeholder: feature port pending.</p>

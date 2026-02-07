@@ -3,20 +3,21 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
+import { useI18n } from "@/lib/i18n/i18n-context";
 import { useSaveSession } from "@/lib/save-session/save-session-context";
 
 const NAV_ITEMS = [
-  { href: "/", label: "Overview", saveRequired: false },
-  { href: "/duplicants", label: "Duplicants", saveRequired: true },
-  { href: "/creatures", label: "Creatures", saveRequired: true },
-  { href: "/geysers", label: "Geysers", saveRequired: true },
-  { href: "/planets", label: "Planets", saveRequired: true, implemented: false },
-  { href: "/materials", label: "Materials", saveRequired: true, implemented: false },
-  { href: "/raw", label: "Raw Editor", saveRequired: true },
-  { href: "/changelog", label: "Changelog", saveRequired: false },
+  { href: "/", i18nKey: "overview-page.title", fallback: "Overview", saveRequired: false },
+  { href: "/duplicants", i18nKey: "duplicant.noun_titlecase_plural", fallback: "Duplicants", saveRequired: true },
+  { href: "/creatures", i18nKey: "creature.noun_titlecase_plural", fallback: "Creatures", saveRequired: true },
+  { href: "/geysers", i18nKey: "geyser.noun_titlecase_plural", fallback: "Geysers", saveRequired: true },
+  { href: "/planets", i18nKey: "planet.noun_titlecase_plural", fallback: "Planets", saveRequired: true, implemented: false },
+  { href: "/materials", i18nKey: "material.noun_titlecase_plural", fallback: "Materials", saveRequired: true, implemented: false },
+  { href: "/raw", i18nKey: "raw-editor-page.title", fallback: "Raw Editor", saveRequired: true },
+  { href: "/changelog", i18nKey: "changelog.title", fallback: "Changelog", saveRequired: false },
 ];
 
-function getPageTitle(pathname) {
+function getPageTitle(pathname, t) {
   const normalizedPathname =
     !pathname || pathname === "/"
       ? "/"
@@ -25,33 +26,33 @@ function getPageTitle(pathname) {
         : pathname;
 
   if (normalizedPathname === "/") {
-    return "Duplicity V4";
+    return t("app.page-title.home", { fallback: "Duplicity V4" });
   }
   if (normalizedPathname.startsWith("/duplicants")) {
-    return "Duplicants Management";
+    return t("app.page-title.duplicants", { fallback: "Duplicants Management" });
   }
   if (normalizedPathname.startsWith("/creatures")) {
-    return "Creatures Management";
+    return t("app.page-title.creatures", { fallback: "Creatures Management" });
   }
   if (normalizedPathname.startsWith("/geysers")) {
-    return "Geysers Management";
+    return t("app.page-title.geysers", { fallback: "Geysers Management" });
   }
   if (normalizedPathname.startsWith("/planets")) {
-    return "Planets Management";
+    return t("app.page-title.planets", { fallback: "Planets Management" });
   }
   if (normalizedPathname.startsWith("/materials")) {
-    return "Materials Management";
+    return t("app.page-title.materials", { fallback: "Materials Management" });
   }
   if (normalizedPathname.startsWith("/raw")) {
-    return "Raw Editor";
+    return t("raw-editor-page.title", { fallback: "Raw Editor" });
   }
   if (normalizedPathname.startsWith("/settings")) {
-    return "Settings";
+    return t("app.page-title.settings", { fallback: "Settings" });
   }
   if (normalizedPathname.startsWith("/changelog")) {
-    return "Changelog";
+    return t("changelog.title", { fallback: "Changelog" });
   }
-  return "Duplicity V4";
+  return t("app.page-title.home", { fallback: "Duplicity V4" });
 }
 
 function isActive(pathname, href) {
@@ -85,34 +86,43 @@ function getDlcDisplayName(dlcId) {
   return names[dlcId] || dlcId;
 }
 
-function getErrorGuidance(error) {
+function getErrorGuidance(error, t) {
   const code = error?.code;
   if (code === "E_VERSION_MINOR") {
     return {
-      title: "Minor version mismatch",
-      detail:
-        "The save minor version is newer than expected. You can retry with the same strictness or force-load with major strictness.",
+      title: t("app.error.minor-version.title", { fallback: "Minor version mismatch" }),
+      detail: t("app.error.minor-version.detail", {
+        fallback:
+          "The save minor version is newer than expected. You can retry with the same strictness or force-load with major strictness.",
+      }),
     };
   }
   if (code === "E_VERSION_MAJOR") {
     return {
-      title: "Major version mismatch",
-      detail:
-        "The parser does not support this major save format yet. Usually this needs parser updates before loading safely.",
+      title: t("app.error.major-version.title", { fallback: "Major version mismatch" }),
+      detail: t("app.error.major-version.detail", {
+        fallback:
+          "The parser does not support this major save format yet. Usually this needs parser updates before loading safely.",
+      }),
     };
   }
   return {
-    title: "Operation failed",
-    detail: "See error details below. You can retry or dismiss this error.",
+    title: t("app.error.generic.title", { fallback: "Operation failed" }),
+    detail: t("app.error.generic.detail", {
+      fallback: "See error details below. You can retry or dismiss this error.",
+    }),
   };
 }
 
-function LoadingDialog({ status, message, fileName }) {
+function LoadingDialog({ status, message, fileName, t }) {
   if (status !== "loading" && status !== "saving") {
     return null;
   }
 
-  const title = status === "loading" ? "Loading Save" : "Saving Save";
+  const title =
+    status === "loading"
+      ? t("save-file.conditions.loading", { fallback: "Loading" })
+      : t("save-file.conditions.saving", { fallback: "Saving" });
 
   return (
     <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
@@ -120,10 +130,12 @@ function LoadingDialog({ status, message, fileName }) {
         <h3 className="text-xl font-semibold">{title}</h3>
         {fileName ? (
           <p className="mt-1 text-xs opacity-70">
-            File: <code>{fileName}</code>
+            {t("app.file-label", { fallback: "File" })}: <code>{fileName}</code>
           </p>
         ) : null}
-        <p className="mt-4 text-sm opacity-85">{message || "Processing..."}</p>
+        <p className="mt-4 text-sm opacity-85">
+          {message || t("app.processing", { fallback: "Processing..." })}
+        </p>
         <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[var(--surface-container-highest)]">
           <div className="h-full w-1/2 animate-pulse rounded-full bg-[var(--accent)]" />
         </div>
@@ -132,7 +144,7 @@ function LoadingDialog({ status, message, fileName }) {
   );
 }
 
-function ImportWarningDialog({ warning, onConfirm, onCancel }) {
+function ImportWarningDialog({ warning, onConfirm, onCancel, t }) {
   if (!warning) {
     return null;
   }
@@ -140,18 +152,22 @@ function ImportWarningDialog({ warning, onConfirm, onCancel }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
       <div className="m3-surface-raised w-full max-w-lg p-5">
-        <h3 className="text-xl font-semibold">Checksum Warning</h3>
+        <h3 className="text-xl font-semibold">
+          {t("app.import-warning.title", { fallback: "Checksum Warning" })}
+        </h3>
         <p className="mt-2 text-sm opacity-85">
-          Import file checksum does not match the payload. Data may have been modified.
+          {t("app.import-warning.detail", {
+            fallback: "Import file checksum does not match the payload. Data may have been modified.",
+          })}
         </p>
         <p className="mt-2 text-xs opacity-75">
-          File: <code>{warning.fileName || "import.json"}</code>
+          {t("app.file-label", { fallback: "File" })}: <code>{warning.fileName || "import.json"}</code>
         </p>
         <p className="mt-1 text-xs opacity-75">
-          Expected: <code>{warning.expectedHash || "N/A"}</code>
+          {t("app.expected", { fallback: "Expected" })}: <code>{warning.expectedHash || "N/A"}</code>
         </p>
         <p className="mt-1 text-xs opacity-75">
-          Actual: <code>{warning.actualHash || "N/A"}</code>
+          {t("app.actual", { fallback: "Actual" })}: <code>{warning.actualHash || "N/A"}</code>
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
           <button
@@ -159,14 +175,14 @@ function ImportWarningDialog({ warning, onConfirm, onCancel }) {
             onClick={onCancel}
             className="m3-button m3-button-outlined px-3 py-2 text-sm"
           >
-            Cancel
+            {t("dialog.verbs.cancel_titlecase", { fallback: "Cancel" })}
           </button>
           <button
             type="button"
             onClick={onConfirm}
             className="m3-button m3-button-tonal px-3 py-2 text-sm"
           >
-            Import Anyway
+            {t("app.import-warning.import-anyway", { fallback: "Import Anyway" })}
           </button>
         </div>
       </div>
@@ -176,7 +192,8 @@ function ImportWarningDialog({ warning, onConfirm, onCancel }) {
 
 export default function AppShell({ children }) {
   const pathname = usePathname();
-  const pageTitle = getPageTitle(pathname);
+  const { t } = useI18n();
+  const pageTitle = useMemo(() => getPageTitle(pathname, t), [pathname, t]);
   const fileInputRef = useRef(null);
   const [strictness, setStrictness] = useState("major");
   const {
@@ -203,14 +220,18 @@ export default function AppShell({ children }) {
   const dlcNames = useMemo(() => dlcIds.map(getDlcDisplayName), [dlcIds]);
   const dlcHoverText = useMemo(() => {
     if (!hasSave) {
-      return "Load a save to read DLC information.";
+      return t("app.dlc.not-loaded", { fallback: "Load a save to read DLC information." });
     }
     if (dlcNames.length === 0) {
-      return "No DLC detected.";
+      return t("app.dlc.none", { fallback: "No DLC detected." });
     }
     return dlcNames.join("\n");
-  }, [dlcNames, hasSave]);
-  const errorGuidance = useMemo(() => getErrorGuidance(error), [error]);
+  }, [dlcNames, hasSave, t]);
+  const errorGuidance = useMemo(() => getErrorGuidance(error, t), [error, t]);
+  const statusText = useMemo(
+    () => t(`app.status.${status}`, { fallback: status }),
+    [status, t]
+  );
 
   const onLoadButtonClick = () => {
     if (fileInputRef.current) {
@@ -233,17 +254,21 @@ export default function AppShell({ children }) {
         status={status}
         message=""
         fileName={pendingFile?.name || fileName}
+        t={t}
       />
       <ImportWarningDialog
         warning={importWarning}
         onCancel={() => confirmImportWarning(false)}
         onConfirm={() => confirmImportWarning(true)}
+        t={t}
       />
       <div className="mx-auto flex h-full w-full max-w-[1432px] flex-col p-3">
         <div className="flex min-h-0 flex-1 gap-4">
           <aside className="m3-surface hidden h-full w-64 overflow-y-auto p-4 md:block">
           <h1 className="text-lg font-semibold">Duplicity</h1>
-          <p className="mt-2 text-xs uppercase tracking-wide opacity-70">Status: {status}</p>
+          <p className="mt-2 text-xs uppercase tracking-wide opacity-70">
+            {t("app.status-label", { fallback: "Status" })}: {statusText}
+          </p>
           <nav className="mt-5 space-y-1">
             {NAV_ITEMS.map((item) => {
               const saveLocked = item.saveRequired && !hasSave;
@@ -256,11 +281,13 @@ export default function AppShell({ children }) {
                     className="m3-nav-item m3-nav-item-disabled block px-3 py-2 text-sm"
                     title={
                       item.implemented === false
-                        ? "Planned but not implemented in V4 yet."
-                        : "Load a save first."
+                        ? t("app.nav.planned-title", {
+                            fallback: "Planned but not implemented in V4 yet.",
+                          })
+                        : t("app.nav.load-save-first", { fallback: "Load a save first." })
                     }
                   >
-                    {item.label}
+                    {t(item.i18nKey, { fallback: item.fallback })}
                   </span>
                 );
               }
@@ -272,7 +299,7 @@ export default function AppShell({ children }) {
                     active ? "m3-nav-item-active" : ""
                   }`}
                 >
-                  {item.label}
+                  {t(item.i18nKey, { fallback: item.fallback })}
                 </Link>
               );
             })}
@@ -287,7 +314,7 @@ export default function AppShell({ children }) {
                 href="/settings"
                 className="m3-button m3-button-outlined px-3 py-2 text-sm"
               >
-                Settings
+                {t("app.page-title.settings", { fallback: "Settings" })}
               </Link>
               <button
                 type="button"
@@ -295,7 +322,7 @@ export default function AppShell({ children }) {
                 disabled={isBusy}
                 className="m3-button m3-button-outlined px-3 py-2 text-sm"
               >
-                Load Save
+                {t("save-file.verbs.load_titlecase", { fallback: "Load" })}
               </button>
               <button
                 type="button"
@@ -303,13 +330,13 @@ export default function AppShell({ children }) {
                 disabled={isBusy || !hasSave}
                 className="m3-button m3-button-tonal px-3 py-2 text-sm"
               >
-                Save
+                {t("save-file.verbs.save_titlecase", { fallback: "Save" })}
               </button>
               <select
                 value={strictness}
                 onChange={(event) => setStrictness(event.target.value)}
                 className="m3-field px-2 py-2 text-sm"
-                title="Parser version strictness"
+                title={t("app.strictness.title", { fallback: "Parser version strictness" })}
               >
                 <option value="major">major</option>
                 <option value="minor">minor</option>
@@ -347,7 +374,7 @@ export default function AppShell({ children }) {
                       disabled={isBusy}
                       className="m3-button m3-button-outlined border-red-200/60 px-2 py-1 text-xs text-[var(--error)]"
                     >
-                      Force Load (major)
+                      {t("app.error.force-load-major", { fallback: "Force Load (major)" })}
                     </button>
                   ) : null}
                   <button
@@ -355,7 +382,7 @@ export default function AppShell({ children }) {
                     onClick={clearError}
                     className="m3-button m3-button-outlined border-red-200/60 px-2 py-1 text-xs text-[var(--error)]"
                   >
-                    Dismiss
+                    {t("app.error.dismiss", { fallback: "Dismiss" })}
                   </button>
                 </div>
               </div>
@@ -379,7 +406,10 @@ export default function AppShell({ children }) {
               className="m3-chip bg-[var(--surface-container-high)] px-2 py-1"
               title={dlcHoverText}
             >
-              DLC Found: {hasSave ? dlcNames.length : 0}
+              {t("app.dlc.found", {
+                fallback: "DLC Found: {count}",
+                params: { count: hasSave ? dlcNames.length : 0 },
+              })}
             </span>
             <span className="mx-auto text-center">Rewritten by cLonata with ♥</span>
             <span
@@ -391,16 +421,18 @@ export default function AppShell({ children }) {
             >
               {hasSave ? (
                 <>
-                  <span>Save File: </span>
+                  <span>{t("app.save-file.label", { fallback: "Save File" })}: </span>
                   <span
                     className={isModified ? "font-bold" : ""}
                     style={isModified ? { color: "var(--accent)" } : undefined}
                   >
-                    {isModified ? "Modified" : "Clean"}
+                    {isModified
+                      ? t("save-file.conditions.modified", { fallback: "Modified" })
+                      : t("app.save-file.clean", { fallback: "Clean" })}
                   </span>
                 </>
               ) : (
-                "Save File: Not Loaded"
+                t("app.save-file.not-loaded", { fallback: "Save File: Not Loaded" })
               )}
             </span>
           </div>

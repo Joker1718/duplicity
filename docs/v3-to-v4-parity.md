@@ -103,9 +103,9 @@ Present but disabled in V3 routes:
 
 ### Settings and i18n
 
-- [ ] Language selector parity
-- [ ] i18n namespace parity (`common.json`, `oni.json`)
-- [ ] Language packs parity (en, cs, es, ru, zh)
+- [x] Language selector parity
+- [x] i18n namespace parity (`common.json`, `oni.json`)
+- [x] Language packs parity (en, cs, es, ru, zh)
 - [~] Offline mode toggle parity (V3 `services/offline-mode/*`; optional for first production parity)
 
 ### Changelog

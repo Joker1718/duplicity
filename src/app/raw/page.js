@@ -10,6 +10,12 @@ import {
   isObjectLike,
 } from "@/lib/oni/raw-path-utils";
 
+const TREE_CHILD_SCAN_LIMIT = 5000;
+const TREE_CHILD_RENDER_LIMIT = 300;
+const PRIMITIVE_FIELD_SCAN_LIMIT = 5000;
+const PRIMITIVE_FIELD_RENDER_LIMIT = 400;
+const MAX_STRING_EDITOR_LENGTH = 5000;
+
 function pathId(path) {
   if (!Array.isArray(path) || path.length === 0) {
     return "root";
@@ -24,24 +30,141 @@ function samePath(a, b) {
   return a.every((item, index) => item === b[index]);
 }
 
+function iterateOwnKeys(value, scanLimit, onKey) {
+  if (!isObjectLike(value)) {
+    return { scanTruncated: false, scanned: 0 };
+  }
+
+  let scanned = 0;
+  if (Array.isArray(value)) {
+    const max = Math.min(value.length, scanLimit);
+    for (let index = 0; index < max; index += 1) {
+      if (!(index in value)) {
+        continue;
+      }
+      scanned += 1;
+      onKey(String(index));
+    }
+    return {
+      scanTruncated: value.length > scanLimit,
+      scanned,
+    };
+  }
+
+  for (const key in value) {
+    if (!Object.prototype.hasOwnProperty.call(value, key)) {
+      continue;
+    }
+    scanned += 1;
+    if (scanned > scanLimit) {
+      return { scanTruncated: true, scanned: scanned - 1 };
+    }
+    onKey(key);
+  }
+
+  return { scanTruncated: false, scanned };
+}
+
 function listObjectChildren(value) {
   if (!isObjectLike(value)) {
-    return [];
+    return {
+      children: [],
+      scanTruncated: false,
+      renderTruncated: false,
+      totalObjectChildren: 0,
+    };
   }
-  return Object.keys(value)
-    .filter((key) => isObjectLike(value[key]))
-    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
+  const children = [];
+  let totalObjectChildren = 0;
+
+  const { scanTruncated } = iterateOwnKeys(value, TREE_CHILD_SCAN_LIMIT, (key) => {
+    if (!isObjectLike(value[key])) {
+      return;
+    }
+    totalObjectChildren += 1;
+    if (children.length < TREE_CHILD_RENDER_LIMIT) {
+      children.push(key);
+    }
+  });
+
+  const renderTruncated = totalObjectChildren > children.length;
+  if (!Array.isArray(value)) {
+    children.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  }
+
+  return {
+    children,
+    scanTruncated,
+    renderTruncated,
+    totalObjectChildren,
+  };
+}
+
+function listPrimitiveFields(value) {
+  if (!isObjectLike(value)) {
+    return {
+      fields: [],
+      scanTruncated: false,
+      renderTruncated: false,
+      totalPrimitiveFields: 0,
+    };
+  }
+
+  const fields = [];
+  let totalPrimitiveFields = 0;
+
+  const { scanTruncated } = iterateOwnKeys(value, PRIMITIVE_FIELD_SCAN_LIMIT, (key) => {
+    const type = getPrimitiveType(value[key]);
+    if (!type) {
+      return;
+    }
+    totalPrimitiveFields += 1;
+    if (fields.length < PRIMITIVE_FIELD_RENDER_LIMIT) {
+      fields.push({
+        key,
+        type,
+        value: value[key],
+      });
+    }
+  });
+
+  const renderTruncated = totalPrimitiveFields > fields.length;
+  if (!Array.isArray(value)) {
+    fields.sort((a, b) => a.key.localeCompare(b.key, undefined, { numeric: true }));
+  }
+
+  return {
+    fields,
+    scanTruncated,
+    renderTruncated,
+    totalPrimitiveFields,
+  };
+}
+
+function getDraftValue(value, type) {
+  if (type !== "string") {
+    return String(value ?? "");
+  }
+  if (typeof value !== "string") {
+    return "";
+  }
+  if (value.length <= MAX_STRING_EDITOR_LENGTH) {
+    return value;
+  }
+  return value.slice(0, MAX_STRING_EDITOR_LENGTH);
 }
 
 function PrimitiveValueEditor({ fieldPath, fieldName, value, onCommit }) {
   const type = getPrimitiveType(value);
-  const [draft, setDraft] = useState(String(value ?? ""));
+  const [draft, setDraft] = useState(() => getDraftValue(value, type));
   const [error, setError] = useState("");
+  const isLongString = type === "string" && typeof value === "string" && value.length > MAX_STRING_EDITOR_LENGTH;
 
   useEffect(() => {
-    setDraft(String(value ?? ""));
+    setDraft(getDraftValue(value, type));
     setError("");
-  }, [value]);
+  }, [type, value]);
 
   if (!type) {
     return null;
@@ -83,12 +206,18 @@ function PrimitiveValueEditor({ fieldPath, fieldName, value, onCommit }) {
         />
         <button
           type="button"
+          disabled={isLongString}
           onClick={type === "number" ? commitNumber : () => onCommit(fieldPath, draft)}
-          className="rounded-md border border-white/25 px-3 py-2 text-sm font-semibold hover:bg-white/10"
+          className="rounded-md border border-white/25 px-3 py-2 text-sm font-semibold hover:bg-white/10 disabled:opacity-50"
         >
           Apply
         </button>
       </div>
+      {isLongString ? (
+        <p className="mt-2 text-xs text-amber-300">
+          String too large to edit safely in UI. Showing first {MAX_STRING_EDITOR_LENGTH} characters.
+        </p>
+      ) : null}
       {error ? <p className="mt-2 text-xs text-red-300">{error}</p> : null}
     </div>
   );
@@ -96,7 +225,8 @@ function PrimitiveValueEditor({ fieldPath, fieldName, value, onCommit }) {
 
 function RawTreeNode({ saveGame, path, selectedPath, onSelect, defaultExpanded = false }) {
   const value = getPathValue(saveGame, path);
-  const children = useMemo(() => listObjectChildren(value), [value]);
+  const childInfo = useMemo(() => listObjectChildren(value), [value]);
+  const children = childInfo.children;
   const [expanded, setExpanded] = useState(defaultExpanded);
   const selected = samePath(path, selectedPath);
   const label = path.length === 0 ? "root" : getRawSegmentName(saveGame, path);
@@ -139,6 +269,12 @@ function RawTreeNode({ saveGame, path, selectedPath, onSelect, defaultExpanded =
               onSelect={onSelect}
             />
           ))}
+          {childInfo.renderTruncated || childInfo.scanTruncated ? (
+            <p className="mt-1 pl-2 text-xs opacity-60">
+              Showing first {children.length} object children
+              {childInfo.totalObjectChildren > 0 ? ` of ${childInfo.totalObjectChildren}` : ""}.
+            </p>
+          ) : null}
         </div>
       ) : null}
     </div>
@@ -154,15 +290,8 @@ export default function RawEditorPage() {
     [saveGame, selectedPath]
   );
 
-  const primitiveFields = useMemo(() => {
-    if (!isObjectLike(target)) {
-      return [];
-    }
-    return Object.keys(target)
-      .map((key) => ({ key, type: getPrimitiveType(target[key]), value: target[key] }))
-      .filter((item) => item.type !== null)
-      .sort((a, b) => a.key.localeCompare(b.key, undefined, { numeric: true }));
-  }, [target]);
+  const primitiveFieldInfo = useMemo(() => listPrimitiveFields(target), [target]);
+  const primitiveFields = primitiveFieldInfo.fields;
 
   if (!hasSave) {
     return (
@@ -241,6 +370,15 @@ export default function RawEditorPage() {
                     onCommit={updateRawValue}
                   />
                 ))}
+                {primitiveFieldInfo.renderTruncated || primitiveFieldInfo.scanTruncated ? (
+                  <p className="mt-2 text-xs opacity-65">
+                    Showing first {primitiveFields.length} primitive fields
+                    {primitiveFieldInfo.totalPrimitiveFields > 0
+                      ? ` of ${primitiveFieldInfo.totalPrimitiveFields}`
+                      : ""}{" "}
+                    to keep the editor responsive.
+                  </p>
+                ) : null}
               </div>
             )}
           </section>

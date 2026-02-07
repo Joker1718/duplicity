@@ -1,10 +1,13 @@
 # Duplicity (V4)
 
-[![GitHub Pages](https://img.shields.io/badge/demo-live-green?logo=github)](https://cLonata.github.io/duplicity)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/cLonata/duplicity/pulls)
-[![Built with Next.js](https://img.shields.io/badge/built%20with-Next.js-black?logo=next.js)](https://nextjs.org/)
-[![Tailwind CSS](https://img.shields.io/badge/styled%20with-TailwindCSS-38bdf8?logo=tailwindcss)](https://tailwindcss.com/)
+[![Demo Live](https://img.shields.io/badge/demo-live-b19cd9?style=for-the-badge&logo=githubpages&logoColor=000000)](https://cLonata.github.io/duplicity)
+[![Build Status](https://img.shields.io/github/deployments/cLonata/duplicity/github-pages?style=for-the-badge&label=build&logo=githubactions&logoColor=ffffff)](https://github.com/cLonata/duplicity/actions)
+
+[![License: MIT](https://img.shields.io/badge/license-MIT-0f172a?style=for-the-badge&logo=opensourceinitiative&logoColor=white)](LICENSE)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-22c55e?style=for-the-badge&logo=git&logoColor=white)](https://github.com/cLonata/duplicity/pulls)
+
+[![Next.js](https://img.shields.io/badge/Next.js-16-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-38bdf8?style=for-the-badge&logo=tailwindcss&logoColor=0f172a)](https://tailwindcss.com/)
 
 A web-based Oxygen Not Included save file editor.
 

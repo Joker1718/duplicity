@@ -9,6 +9,7 @@ export default function SettingsPage() {
     () => languages.find((entry) => entry.code === locale)?.label || locale,
     [languages, locale]
   );
+  const isSingleLocale = supportedLocales.length <= 1;
 
   return (
     <section className="rounded-xl border border-black/10 p-5 dark:border-white/15">
@@ -17,7 +18,8 @@ export default function SettingsPage() {
       </h1>
       <p className="mt-2 text-sm opacity-80">
         {t("settings.language.description", {
-          fallback: "Choose your UI language. This preference is saved in your browser.",
+          fallback:
+            "Duplicity ships in English only right now. Translators are welcome to help expand language support.",
         })}
       </p>
 
@@ -30,6 +32,7 @@ export default function SettingsPage() {
           className="m3-field mt-2 w-full px-3 py-2 text-sm"
           value={locale}
           onChange={(event) => setLocale(event.target.value)}
+          disabled={isSingleLocale}
         >
           {languages.map((entry) => (
             <option key={entry.code} value={entry.code}>
@@ -51,8 +54,7 @@ export default function SettingsPage() {
         </p>
         <p className="mt-1">
           {t("settings.i18n.languages", {
-            fallback: "Supported language packs: {languages}",
-            params: { languages: supportedLocales.join(", ") },
+            fallback: "Supported language packs: English only (for now).",
           })}
         </p>
       </div>

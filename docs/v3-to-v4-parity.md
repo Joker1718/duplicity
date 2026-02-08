@@ -105,12 +105,12 @@ Present but disabled in V3 routes:
 
 - [x] Language selector parity
 - [x] i18n namespace parity (`common.json`, `oni.json`)
-- [x] Language packs parity (en, cs, es, ru, zh)
+- [~] Language packs parity (English only for now; translators welcome)
 - [~] Offline mode toggle parity (V3 `services/offline-mode/*`; optional for first production parity)
 
 ### Changelog
 
-- [ ] Changelog page parity
+- [x] Changelog page parity
 
 ## Secondary Parity Scope (V3 Present but Route-Disabled)
 
@@ -154,6 +154,7 @@ Source refs:
 - [x] Verified parse + write on a real 7.37 save
 - [x] Save session provider + app shell scaffold (`src/lib/save-session/save-session-context.js`, `src/components/app-shell.js`)
 - [x] Static-export-safe Next.js config for GitHub Pages (`next.config.mjs`)
+- [x] GitHub Pages deployment from the live branch via workflow (`.github/workflows/pages.yml`)
 
 ## Suggested Execution Order
 

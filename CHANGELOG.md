@@ -1,3 +1,29 @@
+## 4.0.0
+
+Major V4 rewrite focused on speed, safety, and a modern UI. This release brings V3 parity in a new architecture and unlocks GitHub Pages-first delivery.
+
+Highlights:
+- Full Next.js rewrite with static export for GitHub Pages.
+- New in-browser save pipeline with worker-based parse/write and progress UI.
+- Duplicants and Geysers editors fully rebuilt for parity.
+- Raw editor redesigned with explorer-style layout and improved responsiveness.
+- Settings language selector (English only). Translators welcome.
+- Enhanced load/save workflow:
+  - .sav-only load enforcement
+  - optional in-place save on supported browsers
+  - backup prompt before overwrite
+- Cleaner app shell, navigation, and layout system with consistent styling.
+
+Notes:
+- V4 is a clean-slate rewrite of the UI and data flow.
+- Secondary V3-only routes (Materials, Planets) remain planned.
+
+---
+
+*Older changelog entries start below.*
+
+---
+
 ## 3.19.0
 
 - Hack out nonfunctional editors that no longer apply to save version 4.31

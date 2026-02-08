@@ -45,14 +45,14 @@ This approach improves maintainability, performance, and makes it easier to add 
 
 ## Translations
 
-This project is ready for translations.
+Duplicity ships English only for now. Translators are welcome.
 
-To contribute, translate the following files:
+To contribute a new language, copy the English files and translate them:
 
-- [`/src/translations/en/common.json`](src/translations/en/common.json)
-- [`/src/translations/en/oni.json`](src/translations/en/oni.json)
+- `src/translations/en/common.json`
+- `src/translations/en/oni.json`
 
-Then submit them in a new issue or pull request.
+Add your translated copies under `src/translations/<lang>/` and open a PR.
 
 ---
 

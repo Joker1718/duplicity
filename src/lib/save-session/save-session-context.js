@@ -27,6 +27,7 @@ const INITIAL_STATE = {
   error: null,
   saveGame: null,
   fileName: null,
+  fileHandle: null,
   parseTimeMs: null,
   lastWrittenBytes: null,
   isModified: false,
@@ -62,6 +63,7 @@ function reducer(state, action) {
         error: null,
         saveGame: action.saveGame,
         fileName: action.fileName,
+        fileHandle: action.fileHandle || null,
         parseTimeMs: action.parseTimeMs,
         lastWrittenBytes: null,
         isModified: false,
@@ -163,13 +165,45 @@ function normalizeError(error) {
   };
 }
 
+function hasSavExtension(fileName) {
+  return typeof fileName === "string" && fileName.trim().toLowerCase().endsWith(".sav");
+}
+
+function ensureSavExtension(fileName) {
+  const raw = typeof fileName === "string" ? fileName.trim() : "";
+  if (!raw) {
+    return "duplicity-save.sav";
+  }
+  if (raw.toLowerCase().endsWith(".sav")) {
+    return raw;
+  }
+  const withoutExtension = raw.replace(/\.[^./\\]+$/, "");
+  const base = withoutExtension || raw;
+  return `${base}.sav`;
+}
+
+function formatBackupTimestamp(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hour = String(date.getHours()).padStart(2, "0");
+  const minute = String(date.getMinutes()).padStart(2, "0");
+  const second = String(date.getSeconds()).padStart(2, "0");
+  return `${year}${month}${day}-${hour}${minute}${second}`;
+}
+
+function deriveBackupName(fileName) {
+  const baseName = ensureSavExtension(fileName || "duplicity-save.sav");
+  return baseName.replace(/\.sav$/i, `.backup-${formatBackupTimestamp(new Date())}.sav`);
+}
+
 function deriveOutputName(fileName, saveGame) {
-  if (fileName && fileName.toLowerCase().endsWith(".sav")) {
-    return fileName;
+  if (typeof fileName === "string" && fileName.trim().length > 0) {
+    return ensureSavExtension(fileName);
   }
   const colonyName = saveGame?.header?.gameInfo?.baseName;
   if (colonyName) {
-    return `${colonyName}.sav`;
+    return ensureSavExtension(colonyName);
   }
   return "duplicity-save.sav";
 }
@@ -184,6 +218,15 @@ function downloadArrayBuffer(data, fileName) {
   anchor.click();
   anchor.remove();
   URL.revokeObjectURL(url);
+}
+
+async function writeToFileHandle(fileHandle, data) {
+  if (!fileHandle || typeof fileHandle.createWritable !== "function") {
+    throw new Error("Writable file handle is not available.");
+  }
+  const writable = await fileHandle.createWritable();
+  await writable.write(data);
+  await writable.close();
 }
 
 function downloadText(content, fileName) {
@@ -660,6 +703,13 @@ export function SaveSessionProvider({ children }) {
     if (!file) {
       return;
     }
+    if (!hasSavExtension(file.name)) {
+      dispatch({
+        type: "LOAD_ERROR",
+        error: withErrorCode("Only .sav files are supported.", "E_FILE_EXTENSION"),
+      });
+      return;
+    }
     const strictness = options.versionStrictness || "major";
     dispatch({ type: "LOAD_BEGIN", file, strictness });
     try {
@@ -675,12 +725,52 @@ export function SaveSessionProvider({ children }) {
         type: "LOAD_SUCCESS",
         saveGame,
         fileName: file.name,
+        fileHandle: options.fileHandle || null,
         parseTimeMs,
       });
     } catch (error) {
       dispatch({ type: "LOAD_ERROR", error: normalizeError(error) });
     }
   }, []);
+
+  const loadSaveWithPicker = useCallback(async (options = {}) => {
+    if (typeof window === "undefined" || typeof window.showOpenFilePicker !== "function") {
+      return false;
+    }
+
+    try {
+      const startIn = state.fileHandle || "documents";
+      const [handle] = await window.showOpenFilePicker({
+        id: "oni-save-files",
+        startIn,
+        multiple: false,
+        excludeAcceptAllOption: true,
+        types: [
+          {
+            description: "Oxygen Not Included Save (*.sav)",
+            accept: {
+              "application/x-oxygen-not-included-save": [".sav"],
+            },
+          },
+        ],
+      });
+      if (!handle) {
+        return false;
+      }
+      const file = await handle.getFile();
+      await loadSaveFile(file, {
+        versionStrictness: options.versionStrictness,
+        fileHandle: handle,
+      });
+      return true;
+    } catch (error) {
+      if (error?.name === "AbortError") {
+        return true;
+      }
+      dispatch({ type: "LOAD_ERROR", error: normalizeError(error) });
+      return true;
+    }
+  }, [loadSaveFile, state.fileHandle]);
 
   const forceLoadPendingFile = useCallback(async () => {
     if (!state.pendingFile) {
@@ -708,14 +798,39 @@ export function SaveSessionProvider({ children }) {
         reportProgress: true,
         onProgress: (message) => dispatch({ type: "SAVE_PROGRESS", message }),
       });
-      const outputName =
-        options.fileName || deriveOutputName(state.fileName, state.saveGame);
-      downloadArrayBuffer(data, outputName);
+      const preferInPlaceSave = options.inPlace !== false;
+      if (preferInPlaceSave && state.fileHandle) {
+        try {
+          if (options.backup !== false && typeof state.fileHandle.getFile === "function") {
+            const existingFile = await state.fileHandle.getFile();
+            const existingData = await existingFile.arrayBuffer();
+            if (existingData.byteLength > 0) {
+              downloadArrayBuffer(
+                existingData,
+                deriveBackupName(existingFile.name || state.fileName)
+              );
+            }
+          }
+          await writeToFileHandle(state.fileHandle, data);
+        } catch {
+          const outputName = deriveOutputName(
+            options.fileName ?? state.fileName,
+            state.saveGame
+          );
+          downloadArrayBuffer(data, outputName);
+        }
+      } else {
+        const outputName = deriveOutputName(
+          options.fileName ?? state.fileName,
+          state.saveGame
+        );
+        downloadArrayBuffer(data, outputName);
+      }
       dispatch({ type: "SAVE_SUCCESS", bytes: data.byteLength });
     } catch (error) {
       dispatch({ type: "SAVE_ERROR", error: normalizeError(error) });
     }
-  }, [state.fileName, state.saveGame]);
+  }, [state.fileHandle, state.fileName, state.saveGame]);
 
   const setSaveGame = useCallback((saveGame, options = {}) => {
     dispatch({
@@ -1525,6 +1640,7 @@ export function SaveSessionProvider({ children }) {
       isBusy,
       canForceLoad,
       loadSaveFile,
+      loadSaveWithPicker,
       forceLoadPendingFile,
       retryLoadPendingFile,
       saveCurrentFile,
@@ -1575,6 +1691,7 @@ export function SaveSessionProvider({ children }) {
     importDuplicantBehaviors,
     retryLoadPendingFile,
     loadSaveFile,
+    loadSaveWithPicker,
     pasteDuplicantBehaviors,
     saveCurrentFile,
     setDuplicantSkillMastery,

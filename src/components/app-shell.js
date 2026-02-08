@@ -190,12 +190,58 @@ function ImportWarningDialog({ warning, onConfirm, onCancel, t }) {
   );
 }
 
+function BackupPromptDialog({ open, onConfirm, onSkip, onCancel, t }) {
+  if (!open) {
+    return null;
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+      <div className="m3-surface-raised w-full max-w-lg p-5">
+        <h3 className="text-xl font-semibold">
+          {t("app.backup.title", { fallback: "Download Backup Save File?" })}
+        </h3>
+        <p className="mt-2 text-sm opacity-85">
+          {t("app.backup.detail", {
+            fallback:
+              "You're about to overwrite the current save file. Do you want to download a backup first?",
+          })}
+        </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="m3-button m3-button-outlined px-3 py-2 text-sm"
+          >
+            {t("dialog.verbs.cancel_titlecase", { fallback: "Cancel" })}
+          </button>
+          <button
+            type="button"
+            onClick={onSkip}
+            className="m3-button m3-button-outlined px-3 py-2 text-sm"
+          >
+            {t("app.backup.skip", { fallback: "Skip Backup" })}
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="m3-button m3-button-tonal px-3 py-2 text-sm"
+          >
+            {t("app.backup.confirm", { fallback: "Download Backup & Save" })}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AppShell({ children }) {
   const pathname = usePathname();
   const { t } = useI18n();
   const pageTitle = useMemo(() => getPageTitle(pathname, t), [pathname, t]);
   const fileInputRef = useRef(null);
   const [strictness, setStrictness] = useState("major");
+  const [showBackupPrompt, setShowBackupPrompt] = useState(false);
   const {
     status,
     error,
@@ -203,10 +249,12 @@ export default function AppShell({ children }) {
     saveGame,
     isBusy,
     isModified,
+    fileHandle,
     canForceLoad,
     pendingFile,
     lastLoadAttemptStrictness,
     loadSaveFile,
+    loadSaveWithPicker,
     retryLoadPendingFile,
     forceLoadPendingFile,
     saveCurrentFile,
@@ -233,10 +281,38 @@ export default function AppShell({ children }) {
     [status, t]
   );
 
-  const onLoadButtonClick = () => {
-    if (fileInputRef.current) {
+  const onLoadButtonClick = async () => {
+    const usedEnhancedPicker = await loadSaveWithPicker({
+      versionStrictness: strictness,
+    });
+    if (!usedEnhancedPicker && fileInputRef.current) {
       fileInputRef.current.click();
     }
+  };
+
+  const onSaveButtonClick = () => {
+    if (isBusy || !hasSave) {
+      return;
+    }
+    if (fileHandle) {
+      setShowBackupPrompt(true);
+      return;
+    }
+    saveCurrentFile();
+  };
+
+  const onBackupConfirm = () => {
+    setShowBackupPrompt(false);
+    saveCurrentFile({ backup: true, inPlace: true });
+  };
+
+  const onBackupSkip = () => {
+    setShowBackupPrompt(false);
+    saveCurrentFile({ backup: false, inPlace: true });
+  };
+
+  const onBackupCancel = () => {
+    setShowBackupPrompt(false);
   };
 
   const onFileChange = async (event) => {
@@ -260,6 +336,13 @@ export default function AppShell({ children }) {
         warning={importWarning}
         onCancel={() => confirmImportWarning(false)}
         onConfirm={() => confirmImportWarning(true)}
+        t={t}
+      />
+      <BackupPromptDialog
+        open={showBackupPrompt}
+        onConfirm={onBackupConfirm}
+        onSkip={onBackupSkip}
+        onCancel={onBackupCancel}
         t={t}
       />
       <div className="mx-auto flex h-full w-full max-w-[1432px] flex-col p-3">
@@ -326,7 +409,7 @@ export default function AppShell({ children }) {
               </button>
               <button
                 type="button"
-                onClick={() => saveCurrentFile()}
+                onClick={onSaveButtonClick}
                 disabled={isBusy || !hasSave}
                 className="m3-button m3-button-tonal px-3 py-2 text-sm"
               >
@@ -390,7 +473,7 @@ export default function AppShell({ children }) {
             <input
               ref={fileInputRef}
               type="file"
-              accept=".sav,application/octet-stream"
+              accept=".sav"
               className="hidden"
               onChange={onFileChange}
             />

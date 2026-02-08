@@ -1,37 +1,13 @@
-import csCommon from "@/translations/cs/common.json";
-import csOni from "@/translations/cs/oni.json";
 import enCommon from "@/translations/en/common.json";
 import enOni from "@/translations/en/oni.json";
-import esCommon from "@/translations/es/common.json";
-import esOni from "@/translations/es/oni.json";
-import ruCommon from "@/translations/ru/common.json";
-import ruOni from "@/translations/ru/oni.json";
-import zhCommon from "@/translations/zh/common.json";
-import zhOni from "@/translations/zh/oni.json";
 
-export const SUPPORTED_LOCALES = ["en", "cs", "es", "ru", "zh"];
+export const SUPPORTED_LOCALES = ["en"];
 export const DEFAULT_LOCALE = "en";
 
 const CATALOG = {
   en: {
     common: enCommon,
     oni: enOni,
-  },
-  cs: {
-    common: csCommon,
-    oni: csOni,
-  },
-  es: {
-    common: esCommon,
-    oni: esOni,
-  },
-  ru: {
-    common: ruCommon,
-    oni: ruOni,
-  },
-  zh: {
-    common: zhCommon,
-    oni: zhOni,
   },
 };
 

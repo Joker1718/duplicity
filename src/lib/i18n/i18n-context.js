@@ -7,10 +7,6 @@ const STORAGE_KEY = "duplicity.language";
 
 const FALLBACK_LANGUAGE_NAMES = {
   en: "English",
-  cs: "Czech",
-  es: "Spanish",
-  ru: "Russian",
-  zh: "Chinese",
 };
 
 const I18nContext = createContext(null);

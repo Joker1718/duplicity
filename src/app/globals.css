@@ -250,6 +250,23 @@ select option:focus,
   }
 }
 
+@keyframes m3-progress-indeterminate {
+  0% {
+    transform: translateX(-110%);
+  }
+  50% {
+    transform: translateX(20%);
+  }
+  100% {
+    transform: translateX(220%);
+  }
+}
+
+.m3-progress-indeterminate {
+  width: 35%;
+  animation: m3-progress-indeterminate 1.15s ease-in-out infinite;
+}
+
 .m3-chip {
   border-radius: 999px;
   border: 1px solid var(--outline);

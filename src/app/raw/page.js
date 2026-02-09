@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FaChevronDown, FaChevronRight } from "react-icons/fa6";
+import M3GhostButton from "@/components/ui/m3-ghost-button";
 import SaveRequiredPage from "@/components/save-required-page";
 import { useSaveSession } from "@/lib/save-session/save-session-context";
 import {
@@ -11,9 +13,11 @@ import {
 } from "@/lib/oni/raw-path-utils";
 
 const TREE_CHILD_SCAN_LIMIT = 5000;
-const TREE_CHILD_RENDER_LIMIT = 300;
+const TREE_CHILD_INITIAL_RENDER = 50;
+const TREE_CHILD_RENDER_BATCH = 50;
 const PRIMITIVE_FIELD_SCAN_LIMIT = 5000;
-const PRIMITIVE_FIELD_RENDER_LIMIT = 400;
+const PRIMITIVE_FIELD_INITIAL_RENDER = 50;
+const PRIMITIVE_FIELD_RENDER_BATCH = 50;
 const MAX_STRING_EDITOR_LENGTH = 5000;
 
 function pathId(path) {
@@ -70,7 +74,6 @@ function listObjectChildren(value) {
     return {
       children: [],
       scanTruncated: false,
-      renderTruncated: false,
       totalObjectChildren: 0,
     };
   }
@@ -83,12 +86,9 @@ function listObjectChildren(value) {
       return;
     }
     totalObjectChildren += 1;
-    if (children.length < TREE_CHILD_RENDER_LIMIT) {
-      children.push(key);
-    }
+    children.push(key);
   });
 
-  const renderTruncated = totalObjectChildren > children.length;
   if (!Array.isArray(value)) {
     children.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
   }
@@ -96,7 +96,6 @@ function listObjectChildren(value) {
   return {
     children,
     scanTruncated,
-    renderTruncated,
     totalObjectChildren,
   };
 }
@@ -106,7 +105,6 @@ function listPrimitiveFields(value) {
     return {
       fields: [],
       scanTruncated: false,
-      renderTruncated: false,
       totalPrimitiveFields: 0,
     };
   }
@@ -120,16 +118,13 @@ function listPrimitiveFields(value) {
       return;
     }
     totalPrimitiveFields += 1;
-    if (fields.length < PRIMITIVE_FIELD_RENDER_LIMIT) {
-      fields.push({
-        key,
-        type,
-        value: value[key],
-      });
-    }
+    fields.push({
+      key,
+      type,
+      value: value[key],
+    });
   });
 
-  const renderTruncated = totalPrimitiveFields > fields.length;
   if (!Array.isArray(value)) {
     fields.sort((a, b) => a.key.localeCompare(b.key, undefined, { numeric: true }));
   }
@@ -137,7 +132,6 @@ function listPrimitiveFields(value) {
   return {
     fields,
     scanTruncated,
-    renderTruncated,
     totalPrimitiveFields,
   };
 }
@@ -223,56 +217,117 @@ function PrimitiveValueEditor({ fieldPath, fieldName, value, onCommit }) {
   );
 }
 
-function RawTreeNode({ saveGame, path, selectedPath, onSelect, defaultExpanded = false }) {
+function RawTreeNode({
+  saveGame,
+  path,
+  selectedPath,
+  onSelect,
+  scrollRootRef,
+  defaultExpanded = false,
+}) {
   const value = getPathValue(saveGame, path);
   const childInfo = useMemo(() => listObjectChildren(value), [value]);
   const children = childInfo.children;
   const [expanded, setExpanded] = useState(defaultExpanded);
+  const [renderedChildrenCount, setRenderedChildrenCount] = useState(TREE_CHILD_INITIAL_RENDER);
+  const loadMoreRef = useRef(null);
   const selected = samePath(path, selectedPath);
   const label = path.length === 0 ? "root" : getRawSegmentName(saveGame, path);
+  const renderedChildren = useMemo(
+    () => children.slice(0, renderedChildrenCount),
+    [children, renderedChildrenCount]
+  );
+  const hasMoreChildren = renderedChildrenCount < children.length;
+
+  useEffect(() => {
+    setRenderedChildrenCount((prev) => {
+      if (children.length === 0) {
+        return TREE_CHILD_INITIAL_RENDER;
+      }
+      return Math.min(Math.max(prev, TREE_CHILD_INITIAL_RENDER), children.length);
+    });
+  }, [children.length]);
+
+  const loadMoreChildren = useCallback(() => {
+    setRenderedChildrenCount((prev) =>
+      Math.min(prev + TREE_CHILD_RENDER_BATCH, children.length)
+    );
+  }, [children.length]);
+
+  useEffect(() => {
+    if (!expanded || !hasMoreChildren || !loadMoreRef.current) {
+      return undefined;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          loadMoreChildren();
+        }
+      },
+      {
+        root: scrollRootRef?.current || null,
+        rootMargin: "120px 0px",
+        threshold: 0,
+      }
+    );
+    observer.observe(loadMoreRef.current);
+    return () => observer.disconnect();
+  }, [expanded, hasMoreChildren, loadMoreChildren, scrollRootRef]);
 
   return (
     <div className="pl-2">
-      <div className="flex items-center gap-1">
+      <div className="grid grid-cols-[1.25rem_minmax(0,1fr)] items-center gap-1">
         {children.length > 0 ? (
-          <button
-            type="button"
+          <M3GhostButton
             onClick={() => setExpanded((prev) => !prev)}
-            className="w-5 text-left text-xs opacity-70 hover:opacity-100"
+            className="inline-flex h-5 w-5 items-center justify-center rounded-full p-0 text-xs opacity-75 hover:opacity-100"
             aria-label={expanded ? "Collapse" : "Expand"}
           >
-            {expanded ? "v" : ">"}
-          </button>
+            {expanded ? (
+              <FaChevronDown aria-hidden="true" className="h-2.5 w-2.5" />
+            ) : (
+              <FaChevronRight aria-hidden="true" className="h-2.5 w-2.5" />
+            )}
+          </M3GhostButton>
         ) : (
-          <span className="w-5 text-xs opacity-40">.</span>
+          <span
+            className="inline-flex h-5 w-5 items-center justify-center text-[9px] opacity-35"
+            aria-hidden="true"
+          >
+            •
+          </span>
         )}
-        <button
-          type="button"
+        <M3GhostButton
           onClick={() => onSelect(path)}
-          className={`rounded px-2 py-1 text-left text-xs ${
-            selected ? "bg-[var(--accent)] text-black" : "hover:bg-white/10"
+          className={`justify-self-start px-2 py-1 text-left text-xs ${
+            selected ? "m3-button-ghost-selected" : ""
           }`}
           title={pathId(path)}
         >
           {label}
-        </button>
+        </M3GhostButton>
       </div>
 
       {expanded && children.length > 0 ? (
-        <div className="ml-4 border-l border-white/10 pl-2">
-          {children.map((key) => (
+        <div className="ml-[0.625rem] border-l border-white/10 pl-[0.625rem]">
+          {renderedChildren.map((key) => (
             <RawTreeNode
               key={`${pathId(path)}.${key}`}
               saveGame={saveGame}
               path={[...path, key]}
               selectedPath={selectedPath}
               onSelect={onSelect}
+              scrollRootRef={scrollRootRef}
             />
           ))}
-          {childInfo.renderTruncated || childInfo.scanTruncated ? (
+          {hasMoreChildren ? (
+            <div ref={loadMoreRef} className="h-1 w-full" aria-hidden="true" />
+          ) : null}
+          {hasMoreChildren || childInfo.scanTruncated ? (
             <p className="mt-1 pl-2 text-xs opacity-60">
-              Showing first {children.length} object children
+              Loaded {renderedChildren.length} object children
               {childInfo.totalObjectChildren > 0 ? ` of ${childInfo.totalObjectChildren}` : ""}.
+              {childInfo.scanTruncated ? ` Scan capped at ${TREE_CHILD_SCAN_LIMIT} keys.` : ""}
             </p>
           ) : null}
         </div>
@@ -284,6 +339,9 @@ function RawTreeNode({ saveGame, path, selectedPath, onSelect, defaultExpanded =
 export default function RawEditorPage() {
   const { hasSave, saveGame, updateRawValue } = useSaveSession();
   const [selectedPath, setSelectedPath] = useState(["header"]);
+  const treeScrollRef = useRef(null);
+  const primitiveScrollRef = useRef(null);
+  const primitiveLoadMoreRef = useRef(null);
 
   const target = useMemo(
     () => getPathValue(saveGame, selectedPath),
@@ -292,6 +350,44 @@ export default function RawEditorPage() {
 
   const primitiveFieldInfo = useMemo(() => listPrimitiveFields(target), [target]);
   const primitiveFields = primitiveFieldInfo.fields;
+  const [renderedPrimitiveCount, setRenderedPrimitiveCount] = useState(PRIMITIVE_FIELD_INITIAL_RENDER);
+  const renderedPrimitiveFields = useMemo(
+    () => primitiveFields.slice(0, renderedPrimitiveCount),
+    [primitiveFields, renderedPrimitiveCount]
+  );
+  const hasMorePrimitiveFields = renderedPrimitiveCount < primitiveFields.length;
+
+  useEffect(() => {
+    setRenderedPrimitiveCount(
+      Math.min(PRIMITIVE_FIELD_INITIAL_RENDER, primitiveFields.length || PRIMITIVE_FIELD_INITIAL_RENDER)
+    );
+  }, [primitiveFields.length, selectedPath]);
+
+  const loadMorePrimitiveFields = useCallback(() => {
+    setRenderedPrimitiveCount((prev) =>
+      Math.min(prev + PRIMITIVE_FIELD_RENDER_BATCH, primitiveFields.length)
+    );
+  }, [primitiveFields.length]);
+
+  useEffect(() => {
+    if (!hasMorePrimitiveFields || !primitiveLoadMoreRef.current) {
+      return undefined;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          loadMorePrimitiveFields();
+        }
+      },
+      {
+        root: primitiveScrollRef.current,
+        rootMargin: "120px 0px",
+        threshold: 0,
+      }
+    );
+    observer.observe(primitiveLoadMoreRef.current);
+    return () => observer.disconnect();
+  }, [hasMorePrimitiveFields, loadMorePrimitiveFields]);
 
   if (!hasSave) {
     return (
@@ -305,45 +401,47 @@ export default function RawEditorPage() {
   return (
     <section className="flex h-full min-h-0 flex-col gap-4">
       <nav className="shrink-0 rounded-xl border border-white/20 p-3 text-xs">
-        <button
-          type="button"
+        <M3GhostButton
           onClick={() => setSelectedPath([])}
-          className="rounded px-2 py-1 hover:bg-white/10"
+          className="px-2 py-1"
         >
           root
-        </button>
+        </M3GhostButton>
         {selectedPath.map((segment, index) => {
           const segmentPath = selectedPath.slice(0, index + 1);
           const label = getRawSegmentName(saveGame, segmentPath) || segment;
           return (
             <span key={`${segment}-${index}`}>
               <span className="px-1 opacity-50">/</span>
-              <button
-                type="button"
+              <M3GhostButton
                 onClick={() => setSelectedPath(segmentPath)}
-                className="rounded px-2 py-1 hover:bg-white/10"
+                className="px-2 py-1"
               >
                 {label}
-              </button>
+              </M3GhostButton>
             </span>
           );
         })}
       </nav>
 
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-[360px_minmax(0,1fr)]">
-        <aside className="h-full min-h-0 overflow-auto rounded-xl border border-white/20 p-3">
+        <aside
+          ref={treeScrollRef}
+          className="h-full min-h-0 overflow-auto rounded-xl border border-white/20 p-3"
+        >
           <RawTreeNode
             saveGame={saveGame}
             path={[]}
             selectedPath={selectedPath}
             onSelect={setSelectedPath}
+            scrollRootRef={treeScrollRef}
             defaultExpanded
           />
         </aside>
 
         <section className="flex h-full min-h-0 flex-col rounded-xl border border-white/20 p-4">
           <h2 className="text-lg font-semibold">Primitive Fields</h2>
-          <div className="mt-3 min-h-0 flex-1 overflow-auto">
+          <div ref={primitiveScrollRef} className="mt-3 min-h-0 flex-1 overflow-auto">
             {!isObjectLike(target) ? (
               <p className="text-sm opacity-80">
                 Selected value is not an object. Navigate to an object node to edit fields.
@@ -354,7 +452,7 @@ export default function RawEditorPage() {
               </p>
             ) : (
               <div className="space-y-2">
-                {primitiveFields.map((field) => (
+                {renderedPrimitiveFields.map((field) => (
                   <PrimitiveValueEditor
                     key={field.key}
                     fieldPath={[...selectedPath, field.key]}
@@ -363,13 +461,18 @@ export default function RawEditorPage() {
                     onCommit={updateRawValue}
                   />
                 ))}
-                {primitiveFieldInfo.renderTruncated || primitiveFieldInfo.scanTruncated ? (
+                {hasMorePrimitiveFields ? (
+                  <div ref={primitiveLoadMoreRef} className="h-1 w-full" aria-hidden="true" />
+                ) : null}
+                {hasMorePrimitiveFields || primitiveFieldInfo.scanTruncated ? (
                   <p className="mt-2 text-xs opacity-65">
-                    Showing first {primitiveFields.length} primitive fields
+                    Loaded {renderedPrimitiveFields.length} primitive fields
                     {primitiveFieldInfo.totalPrimitiveFields > 0
                       ? ` of ${primitiveFieldInfo.totalPrimitiveFields}`
-                      : ""}{" "}
-                    to keep the editor responsive.
+                      : ""}.
+                    {primitiveFieldInfo.scanTruncated
+                      ? ` Scan capped at ${PRIMITIVE_FIELD_SCAN_LIMIT} keys.`
+                      : ""}
                   </p>
                 ) : null}
               </div>

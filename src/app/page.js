@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { useSaveSession } from "@/lib/save-session/save-session-context";
+import M3Select from "@/components/ui/m3-select";
 import {
   getDifficultySettingLabel,
   getDifficultyValueLabel,
@@ -166,7 +167,7 @@ function ReadyState({
                     </span>
                   </label>
                 ) : options.length > 0 ? (
-                  <select
+                  <M3Select
                     value={selected}
                     onChange={(event) =>
                       onUpdateDifficulty(settingName, event.target.value)
@@ -178,7 +179,7 @@ function ReadyState({
                         {getDifficultyValueLabel(settingName, value)}
                       </option>
                     ))}
-                  </select>
+                  </M3Select>
                 ) : (
                   <input
                     type="text"

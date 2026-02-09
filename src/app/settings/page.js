@@ -5,6 +5,7 @@ import { useI18n } from "@/lib/i18n/i18n-context";
 import { useSaveSession } from "@/lib/save-session/save-session-context";
 import { probeSaveGame } from "@/lib/oni/save-probe";
 import { HAIR_OFFSET_BASES } from "@/lib/oni/hair-offsets";
+import M3Select from "@/components/ui/m3-select";
 import { withBasePath } from "@/lib/asset-paths";
 
 export default function SettingsPage() {
@@ -288,9 +289,10 @@ export default function SettingsPage() {
         <label className="text-sm font-semibold" htmlFor="language-select">
           {t("settings.language.title", { fallback: "Language" })}
         </label>
-        <select
+        <M3Select
           id="language-select"
-          className="m3-field mt-2 w-full px-3 py-2 text-sm"
+          containerClassName="mt-2"
+          className="m3-field w-full px-3 py-2 text-sm"
           value={locale}
           onChange={(event) => setLocale(event.target.value)}
           disabled={isSingleLocale}
@@ -300,7 +302,7 @@ export default function SettingsPage() {
               {entry.label}
             </option>
           ))}
-        </select>
+        </M3Select>
         <p className="mt-3 text-xs opacity-75">
           {t("settings.language.current", {
             fallback: "Current language: {language}",
@@ -330,16 +332,17 @@ export default function SettingsPage() {
               "Controls how strictly the parser enforces save version checks when loading.",
           })}
         </p>
-        <select
+        <M3Select
           id="strictness-select"
-          className="m3-field mt-2 w-full px-3 py-2 text-sm"
+          containerClassName="mt-2"
+          className="m3-field w-full px-3 py-2 text-sm"
           value={parseStrictness}
           onChange={(event) => setParseStrictness(event.target.value)}
         >
           <option value="major">major (recommended)</option>
           <option value="minor">minor</option>
           <option value="none">none</option>
-        </select>
+        </M3Select>
       </div>
 
       <div className="mt-5 rounded-xl border border-white/15 p-4">

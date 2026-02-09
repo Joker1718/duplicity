@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FaChevronLeft, FaChevronRight } from "react-icons/fa6";
 import SaveRequiredPage from "@/components/save-required-page";
+import M3CircleButton from "@/components/ui/m3-circle-button";
 import { useSaveSession } from "@/lib/save-session/save-session-context";
 import { selectDuplicantEditorModel, selectDuplicants } from "@/lib/oni/save-selectors";
 import { HAIR_OFFSET_BASES } from "@/lib/oni/hair-offsets";
@@ -13,6 +15,7 @@ import {
   getSafeAccessoryOrdinal,
   isAccessoryAssetAvailable,
 } from "@/lib/oni/accessory-constraints";
+import M3Select from "@/components/ui/m3-select";
 import { withBasePath } from "@/lib/asset-paths";
 import { getSkillGroupDisplayName } from "@/lib/oni/minion-interests";
 import {
@@ -757,14 +760,13 @@ function DuplicantEditorPageContent() {
       <header className="rounded-xl border border-white/20 p-4">
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-2">
-            <button
-              type="button"
+            <M3CircleButton
               onClick={() => scrollCarouselBy(-1)}
-              className="m3-button m3-button-outlined px-2 py-1 text-xs"
-              aria-label="Scroll left"
+              aria-label="Show previous duplicants"
+              title="Show previous duplicants"
             >
-              ◀
-            </button>
+              <FaChevronLeft aria-hidden="true" className="h-3.5 w-3.5" />
+            </M3CircleButton>
             <div
               ref={carouselRef}
               className="no-scrollbar flex flex-1 snap-x snap-mandatory items-center gap-3 overflow-x-auto pb-2 cursor-grab select-none active:cursor-grabbing"
@@ -857,14 +859,13 @@ function DuplicantEditorPageContent() {
               );
             })}
             </div>
-            <button
-              type="button"
+            <M3CircleButton
               onClick={() => scrollCarouselBy(1)}
-              className="m3-button m3-button-outlined px-2 py-1 text-xs"
-              aria-label="Scroll right"
+              aria-label="Show next duplicants"
+              title="Show next duplicants"
             >
-              ▶
-            </button>
+              <FaChevronRight aria-hidden="true" className="h-3.5 w-3.5" />
+            </M3CircleButton>
           </div>
         </div>
       </header>
@@ -894,7 +895,7 @@ function DuplicantEditorPageContent() {
           </label>
           <label className="flex w-[180px] flex-col gap-1 text-sm">
             <span className="opacity-80">Gender</span>
-            <select
+            <M3Select
               value={model.gender || "FEMALE"}
               onChange={(event) => updateDuplicantGender(model.id, event.target.value)}
               className="rounded-md border border-white/25 bg-black px-3 py-2 text-sm"
@@ -904,7 +905,7 @@ function DuplicantEditorPageContent() {
                   {option.label}
                 </option>
               ))}
-            </select>
+            </M3Select>
           </label>
           <label className="flex w-[200px] flex-col gap-1 text-sm">
             <span className="opacity-80">Appearance</span>
@@ -1342,7 +1343,7 @@ function DuplicantEditorPageContent() {
 
         {model.availableInterests.length > 0 ? (
           <div className="mt-3 flex flex-wrap items-center gap-2">
-              <select
+              <M3Select
                 value={interestToAdd}
                 onChange={(event) => setInterestToAdd(event.target.value)}
                 className="rounded-md border border-white/25 bg-black px-3 py-2 text-sm"
@@ -1352,7 +1353,7 @@ function DuplicantEditorPageContent() {
                     {getSkillGroupDisplayName(interest)}
                   </option>
                 ))}
-              </select>
+              </M3Select>
             <button
               type="button"
               onClick={() => {
@@ -1553,7 +1554,7 @@ function DuplicantEditorPageContent() {
             <p className="mt-2 text-xs opacity-70">No remaining known effects to add.</p>
           ) : (
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <select
+              <M3Select
                 value={newEffectId}
                 onChange={(event) => setNewEffectId(event.target.value)}
                 className="rounded-md border border-white/25 bg-black px-3 py-2 text-sm"
@@ -1563,7 +1564,7 @@ function DuplicantEditorPageContent() {
                     {effectId}
                   </option>
                 ))}
-              </select>
+              </M3Select>
               <input
                 type="number"
                 min="1"

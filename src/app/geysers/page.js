@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import SaveRequiredPage from "@/components/save-required-page";
+import M3Select from "@/components/ui/m3-select";
 import { GEYSER_TYPE_NAMES } from "@/lib/oni/oni-constants";
 import { selectGeysers } from "@/lib/oni/save-selectors";
 import { useSaveSession } from "@/lib/save-session/save-session-context";
@@ -55,7 +56,7 @@ function GeyserCard({ geyser, onTypeChange, onParameterChange }) {
 
       <label className="mt-3 flex flex-col gap-1 text-xs">
         <span className="opacity-75">Type</span>
-        <select
+        <M3Select
           value={geyser.geyserType}
           onChange={(event) => onTypeChange(geyser.id, event.target.value)}
           className="rounded-md border border-white/25 bg-black px-2 py-2 text-sm"
@@ -65,7 +66,7 @@ function GeyserCard({ geyser, onTypeChange, onParameterChange }) {
               {typeName}
             </option>
           ))}
-        </select>
+        </M3Select>
       </label>
 
       <div className="mt-3 grid gap-2 sm:grid-cols-2">

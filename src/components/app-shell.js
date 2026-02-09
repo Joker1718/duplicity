@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { FaChevronLeft } from "react-icons/fa6";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { useSaveSession } from "@/lib/save-session/save-session-context";
+import M3CircleButton from "@/components/ui/m3-circle-button";
 
 const NAV_ITEMS = [
   { href: "/", i18nKey: "overview-page.title", fallback: "Overview", saveRequired: false },
@@ -444,14 +446,13 @@ export default function AppShell({ children }) {
               <div className="flex flex-wrap items-center gap-2">
                 <div className="mr-auto flex items-center gap-2">
                   {isDuplicantEditor ? (
-                    <Link
+                    <M3CircleButton
                       href="/duplicants"
                       aria-label="Back to Duplicant Management"
                       title="Back to Duplicant Management"
-                      className="m3-button m3-button-outlined px-2 py-2 text-sm"
                     >
-                      <span aria-hidden="true">&lt;</span>
-                    </Link>
+                      <FaChevronLeft aria-hidden="true" className="h-3.5 w-3.5" />
+                    </M3CircleButton>
                   ) : null}
                   <h2 className="text-lg font-semibold">{pageTitle}</h2>
                 </div>

@@ -7,6 +7,12 @@ import SaveRequiredPage from "@/components/save-required-page";
 import { useSaveSession } from "@/lib/save-session/save-session-context";
 import { selectDuplicantEditorModel, selectDuplicants } from "@/lib/oni/save-selectors";
 import { HAIR_OFFSET_BASES } from "@/lib/oni/hair-offsets";
+import {
+  HAIR_ASSET_ORDINALS,
+  HEAD_ASSET_ORDINALS,
+  getSafeAccessoryOrdinal,
+  isAccessoryAssetAvailable,
+} from "@/lib/oni/accessory-constraints";
 import { withBasePath } from "@/lib/asset-paths";
 import { getSkillGroupDisplayName } from "@/lib/oni/minion-interests";
 import {
@@ -31,6 +37,12 @@ const CARD_CONTENT_SCALE = 0.65;
 const CARD_CONTENT_OFFSET_Y = 25;
 const CARD_SCALE_RATIO = CARD_SIZE / PREVIEW_SIZE;
 const CAROUSEL_NAME_MAX = 12;
+const APPEARANCE_MODAL_PREVIEW_SCALE = 0.65;
+const APPEARANCE_MODAL_PREVIEW_OFFSET_Y = 25;
+const APPEARANCE_MODAL_CARD_SCALE = 0.6;
+const APPEARANCE_MODAL_CARD_OFFSET_Y = 22;
+const HEAD_SHAPE_OPTIONS = HEAD_ASSET_ORDINALS;
+const HAIR_STYLE_OPTIONS = HAIR_ASSET_ORDINALS;
 
 function formatAccessoryOrdinal(ordinal) {
   const safe = Number.isFinite(ordinal) ? Math.max(1, Math.floor(ordinal)) : 1;
@@ -38,7 +50,9 @@ function formatAccessoryOrdinal(ordinal) {
 }
 
 function getAccessorySrc(type, ordinal) {
-  const padded = formatAccessoryOrdinal(ordinal);
+  const safeType = type === "hair" ? "hair" : "head";
+  const safeOrdinal = getSafeAccessoryOrdinal(safeType, ordinal);
+  const padded = formatAccessoryOrdinal(safeOrdinal);
   return `${ACCESSORY_BASE_PATH}/${type}/${type}_${padded}.png`;
 }
 
@@ -47,6 +61,21 @@ function truncateName(name) {
     return name;
   }
   return `${name.slice(0, Math.max(0, CAROUSEL_NAME_MAX - 3))}...`;
+}
+
+function getHairAdjustments(hairOrdinal, hairOffsets) {
+  const hairOffset = hairOffsets?.[String(hairOrdinal)] ?? hairOffsets?.[hairOrdinal];
+  const baseOffset = HAIR_OFFSET_BASES[hairOrdinal] || {};
+  const rawOffsetX =
+    (Number.isFinite(baseOffset.x) ? baseOffset.x : 0) +
+    (Number.isFinite(hairOffset?.x) ? hairOffset.x : 0);
+  const rawOffsetY =
+    (Number.isFinite(baseOffset.y) ? baseOffset.y : 0) +
+    (Number.isFinite(hairOffset?.y) ? hairOffset.y : 0);
+  const rawScale =
+    (Number.isFinite(baseOffset.scale) ? baseOffset.scale : 1) *
+    (Number.isFinite(hairOffset?.scale) ? hairOffset.scale : 1);
+  return { rawOffsetX, rawOffsetY, rawScale };
 }
 
 function DuplicantEditorFallback() {
@@ -147,6 +176,9 @@ function DuplicantEditorPageContent() {
   const [newEffectCycles, setNewEffectCycles] = useState("5");
   const [newEffectError, setNewEffectError] = useState("");
   const [hairOffsets, setHairOffsets] = useState({});
+  const [appearanceModalOpen, setAppearanceModalOpen] = useState(false);
+  const [isAppearanceModalVisible, setIsAppearanceModalVisible] = useState(false);
+  const [appearanceEditorTab, setAppearanceEditorTab] = useState("head");
   const [reactionModal, setReactionModal] = useState(null);
   const [isReactionModalVisible, setIsReactionModalVisible] = useState(false);
   const carouselRef = useRef(null);
@@ -154,6 +186,8 @@ function DuplicantEditorPageContent() {
   const [carouselPad, setCarouselPad] = useState(0);
   const carouselDragRef = useRef(null);
   const suppressCarouselClickRef = useRef(false);
+  const appearanceModalCloseTimerRef = useRef(null);
+  const appearanceModalRafRef = useRef(null);
   const reactionModalCloseTimerRef = useRef(null);
   const reactionModalRafRef = useRef(null);
 
@@ -161,6 +195,12 @@ function DuplicantEditorPageContent() {
 
   useEffect(() => {
     return () => {
+      if (appearanceModalCloseTimerRef.current) {
+        clearTimeout(appearanceModalCloseTimerRef.current);
+      }
+      if (appearanceModalRafRef.current) {
+        cancelAnimationFrame(appearanceModalRafRef.current);
+      }
       if (reactionModalCloseTimerRef.current) {
         clearTimeout(reactionModalCloseTimerRef.current);
       }
@@ -506,6 +546,38 @@ function DuplicantEditorPageContent() {
     }, 120);
   }, [reactionModal]);
 
+  const openAppearanceModal = useCallback(() => {
+    if (appearanceModalCloseTimerRef.current) {
+      clearTimeout(appearanceModalCloseTimerRef.current);
+      appearanceModalCloseTimerRef.current = null;
+    }
+    if (appearanceModalRafRef.current) {
+      cancelAnimationFrame(appearanceModalRafRef.current);
+      appearanceModalRafRef.current = null;
+    }
+    setAppearanceEditorTab("head");
+    setAppearanceModalOpen(true);
+    setIsAppearanceModalVisible(false);
+    appearanceModalRafRef.current = requestAnimationFrame(() => {
+      setIsAppearanceModalVisible(true);
+      appearanceModalRafRef.current = null;
+    });
+  }, []);
+
+  const closeAppearanceModal = useCallback(() => {
+    if (!appearanceModalOpen) {
+      return;
+    }
+    if (appearanceModalCloseTimerRef.current) {
+      clearTimeout(appearanceModalCloseTimerRef.current);
+    }
+    setIsAppearanceModalVisible(false);
+    appearanceModalCloseTimerRef.current = setTimeout(() => {
+      setAppearanceModalOpen(false);
+      appearanceModalCloseTimerRef.current = null;
+    }, 120);
+  }, [appearanceModalOpen]);
+
   if (!hasSave) {
     return (
       <SaveRequiredPage
@@ -667,22 +739,18 @@ function DuplicantEditorPageContent() {
 
   const headshapeOrdinal = model.appearance?.headOrdinal ?? 1;
   const hairOrdinal = model.appearance?.hairOrdinal ?? 1;
-  const hairOffset = hairOffsets?.[String(hairOrdinal)] ?? hairOffsets?.[hairOrdinal];
-  const baseOffset = HAIR_OFFSET_BASES[hairOrdinal] || {};
-  const rawOffsetX =
-    (Number.isFinite(baseOffset.x) ? baseOffset.x : 0) +
-    (Number.isFinite(hairOffset?.x) ? hairOffset.x : 0);
-  const rawOffsetY =
-    (Number.isFinite(baseOffset.y) ? baseOffset.y : 0) +
-    (Number.isFinite(hairOffset?.y) ? hairOffset.y : 0);
-  const rawScale =
-    (Number.isFinite(baseOffset.scale) ? baseOffset.scale : 1) *
-    (Number.isFinite(hairOffset?.scale) ? hairOffset.scale : 1);
-  const hairOffsetX = rawOffsetX * CARD_SCALE_RATIO * CARD_CONTENT_SCALE;
-  const hairOffsetY =
-    rawOffsetY * CARD_SCALE_RATIO * CARD_CONTENT_SCALE + CARD_CONTENT_OFFSET_Y;
-  const hairScale =
-    CARD_CONTENT_SCALE * (1 + (rawScale - 1) * CARD_SCALE_RATIO);
+  const eyesOrdinal = model.appearance?.eyesOrdinal ?? 1;
+  const hasCurrentHairAsset = isAccessoryAssetAvailable("hair", hairOrdinal);
+  const hasCurrentHeadAsset = isAccessoryAssetAvailable("head", headshapeOrdinal);
+  const { rawOffsetX, rawOffsetY, rawScale } = getHairAdjustments(hairOrdinal, hairOffsets);
+  const modalPreviewHairOffsetX = rawOffsetX * APPEARANCE_MODAL_PREVIEW_SCALE;
+  const modalPreviewHairOffsetY =
+    rawOffsetY * APPEARANCE_MODAL_PREVIEW_SCALE + APPEARANCE_MODAL_PREVIEW_OFFSET_Y;
+  const modalPreviewHairScale = APPEARANCE_MODAL_PREVIEW_SCALE * rawScale;
+  const modalCardHairOffsetX = rawOffsetX * APPEARANCE_MODAL_CARD_SCALE;
+  const modalCardHairOffsetY =
+    rawOffsetY * APPEARANCE_MODAL_CARD_SCALE + APPEARANCE_MODAL_CARD_OFFSET_Y;
+  const modalCardHairScale = APPEARANCE_MODAL_CARD_SCALE * rawScale;
 
   return (
     <section className="space-y-4">
@@ -842,14 +910,217 @@ function DuplicantEditorPageContent() {
             <span className="opacity-80">Appearance</span>
             <button
               type="button"
-              disabled
-              className="rounded-md border border-white/25 px-3 py-2 text-sm font-semibold opacity-60"
+              onClick={openAppearanceModal}
+              className="rounded-md bg-[var(--accent)] px-3 py-2 text-sm font-semibold text-[#000000] hover:brightness-110"
             >
               Edit Appearance
             </button>
           </label>
         </div>
       </div>
+
+      {appearanceModalOpen ? (
+        <div
+          className={`fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 transition-opacity duration-150 ${
+            isAppearanceModalVisible ? "opacity-100" : "opacity-0"
+          }`}
+          onClick={closeAppearanceModal}
+        >
+          <div
+            className={`m3-surface-raised flex max-h-[85vh] w-full max-w-3xl flex-col p-5 transition duration-150 ${
+              isAppearanceModalVisible
+                ? "translate-y-0 scale-100 opacity-100"
+                : "translate-y-1 scale-[0.99] opacity-0"
+            }`}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-xl font-semibold">Edit Appearance</h3>
+              <button
+                type="button"
+                onClick={closeAppearanceModal}
+                className="m3-button m3-button-outlined px-3 py-1 text-sm"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="mt-4 flex flex-col items-center gap-2">
+              <div className="relative h-44 w-44 overflow-hidden rounded-lg border border-white/15 bg-black/30">
+                <img
+                  src={getAccessorySrc("head", headshapeOrdinal)}
+                  alt={`Headshape ${headshapeOrdinal}`}
+                  className="pointer-events-none absolute inset-0 h-full w-full object-contain"
+                  style={{
+                    transform: `translateY(${APPEARANCE_MODAL_PREVIEW_OFFSET_Y}px) scale(${APPEARANCE_MODAL_PREVIEW_SCALE})`,
+                    transformOrigin: "center",
+                  }}
+                  draggable={false}
+                />
+                <img
+                  src={getAccessorySrc("hair", hairOrdinal)}
+                  alt={`Hair ${hairOrdinal}`}
+                  className="pointer-events-none absolute left-1/2 top-1/2 h-full w-full object-contain"
+                  style={{
+                    transform: `translate(calc(-50% + ${modalPreviewHairOffsetX}px), calc(-50% + ${modalPreviewHairOffsetY}px)) scale(${modalPreviewHairScale})`,
+                    transformOrigin: "center",
+                  }}
+                  draggable={false}
+                />
+              </div>
+            </div>
+
+            <div className="mt-4 grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => setAppearanceEditorTab("head")}
+                className={`rounded-md px-3 py-2 text-sm font-semibold text-[#000000] ${
+                  appearanceEditorTab === "head"
+                    ? "bg-[#7f56c5]"
+                    : "bg-[var(--accent)] hover:bg-[#a98add]"
+                }`}
+              >
+                Head
+              </button>
+              <button
+                type="button"
+                onClick={() => setAppearanceEditorTab("hair")}
+                className={`rounded-md px-3 py-2 text-sm font-semibold text-[#000000] ${
+                  appearanceEditorTab === "hair"
+                    ? "bg-[#7f56c5]"
+                    : "bg-[var(--accent)] hover:bg-[#a98add]"
+                }`}
+              >
+                Hair
+              </button>
+              <button
+                type="button"
+                disabled
+                className="cursor-not-allowed rounded-md bg-[#7f56c5] px-3 py-2 text-sm font-semibold text-[#000000] opacity-60"
+              >
+                Eyes
+              </button>
+            </div>
+
+            {appearanceEditorTab === "head" ? (
+              <div className="mt-4 min-h-0 flex-1 overflow-y-auto pr-1 touch-pan-y">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                  {HEAD_SHAPE_OPTIONS.map((headOrdinal) => {
+                    const isSelected = headOrdinal === headshapeOrdinal;
+                    return (
+                      <button
+                        key={headOrdinal}
+                        type="button"
+                        onClick={() =>
+                          updateDuplicantAppearance(model.id, "headshape", headOrdinal)
+                        }
+                        className={`rounded-lg border p-2 text-left transition ${
+                          isSelected
+                            ? "border-transparent bg-[#7f56c5] text-[#000000]"
+                            : "border-white/15 bg-[var(--surface-container)] text-[var(--foreground)] hover:bg-white/5"
+                        }`}
+                      >
+                        <div className="relative mx-auto h-28 w-28 overflow-hidden rounded-md border border-white/15 bg-black/30">
+                          <img
+                            src={getAccessorySrc("head", headOrdinal)}
+                            alt={`Headshape ${headOrdinal}`}
+                            className="pointer-events-none absolute inset-0 h-full w-full object-contain"
+                            style={{
+                              transform: `translateY(${APPEARANCE_MODAL_CARD_OFFSET_Y}px) scale(${APPEARANCE_MODAL_CARD_SCALE})`,
+                              transformOrigin: "center",
+                            }}
+                            draggable={false}
+                          />
+                          <img
+                            src={getAccessorySrc("hair", hairOrdinal)}
+                            alt={`Hair ${hairOrdinal}`}
+                            className="pointer-events-none absolute left-1/2 top-1/2 h-full w-full object-contain"
+                            style={{
+                              transform: `translate(calc(-50% + ${modalCardHairOffsetX}px), calc(-50% + ${modalCardHairOffsetY}px)) scale(${modalCardHairScale})`,
+                              transformOrigin: "center",
+                            }}
+                            draggable={false}
+                          />
+                        </div>
+                        <p className="mt-2 text-center text-xs font-semibold">
+                          Headshape {headOrdinal}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+            {appearanceEditorTab === "hair" ? (
+              <div className="mt-4 min-h-0 flex-1 overflow-y-auto pr-1 touch-pan-y">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                  {HAIR_STYLE_OPTIONS.map((hairOptionOrdinal) => {
+                    const isSelected = hairOptionOrdinal === hairOrdinal;
+                    const hairAdjustments = getHairAdjustments(hairOptionOrdinal, hairOffsets);
+                    const optionHairOffsetX =
+                      hairAdjustments.rawOffsetX * APPEARANCE_MODAL_CARD_SCALE;
+                    const optionHairOffsetY =
+                      hairAdjustments.rawOffsetY * APPEARANCE_MODAL_CARD_SCALE +
+                      APPEARANCE_MODAL_CARD_OFFSET_Y;
+                    const optionHairScale =
+                      APPEARANCE_MODAL_CARD_SCALE * hairAdjustments.rawScale;
+
+                    return (
+                      <button
+                        key={hairOptionOrdinal}
+                        type="button"
+                        onClick={() =>
+                          updateDuplicantAppearance(model.id, "hair", hairOptionOrdinal)
+                        }
+                        className={`rounded-lg border p-2 text-left transition ${
+                          isSelected
+                            ? "border-transparent bg-[#7f56c5] text-[#000000]"
+                            : "border-white/15 bg-[var(--surface-container)] text-[var(--foreground)] hover:bg-white/5"
+                        }`}
+                      >
+                        <div className="relative mx-auto h-28 w-28 overflow-hidden rounded-md border border-white/15 bg-black/30">
+                          <img
+                            src={getAccessorySrc("head", headshapeOrdinal)}
+                            alt={`Headshape ${headshapeOrdinal}`}
+                            className="pointer-events-none absolute inset-0 h-full w-full object-contain"
+                            style={{
+                              transform: `translateY(${APPEARANCE_MODAL_CARD_OFFSET_Y}px) scale(${APPEARANCE_MODAL_CARD_SCALE})`,
+                              transformOrigin: "center",
+                            }}
+                            draggable={false}
+                          />
+                          <img
+                            src={getAccessorySrc("hair", hairOptionOrdinal)}
+                            alt={`Hair ${hairOptionOrdinal}`}
+                            className="pointer-events-none absolute left-1/2 top-1/2 h-full w-full object-contain"
+                            style={{
+                              transform: `translate(calc(-50% + ${optionHairOffsetX}px), calc(-50% + ${optionHairOffsetY}px)) scale(${optionHairScale})`,
+                              transformOrigin: "center",
+                            }}
+                            draggable={false}
+                          />
+                        </div>
+                        <p className="mt-2 text-center text-xs font-semibold">
+                          Hair {hairOptionOrdinal}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+
+            <p className="mt-3 text-xs opacity-70">
+              Eyes ({eyesOrdinal}) editor is planned next.
+            </p>
+            {!hasCurrentHeadAsset || !hasCurrentHairAsset ? (
+              <p className="mt-1 text-xs opacity-60">
+                Preview uses fallback assets when current ID has no local image.
+              </p>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
 
       <div className="rounded-xl border border-white/20 p-4">
         <h2 className="text-lg font-semibold">Traits</h2>
@@ -1138,49 +1409,6 @@ function DuplicantEditorPageContent() {
               </div>
             </div>
           ))}
-        </div>
-      </div>
-
-      <div className="rounded-xl border border-white/20 p-4">
-        <h2 className="text-lg font-semibold">Appearance</h2>
-        <div className="mt-3 grid gap-3 sm:grid-cols-3">
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="opacity-80">Hair</span>
-            <input
-              type="number"
-              min="1"
-              value={model.appearance.hairOrdinal}
-              onChange={(event) =>
-                updateDuplicantAppearance(model.id, "hair", Number(event.target.value))
-              }
-              className="rounded-md border border-white/25 bg-black px-3 py-2 text-sm"
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="opacity-80">Head Shape</span>
-            <input
-              type="number"
-              min="1"
-              max="7"
-              value={model.appearance.headOrdinal}
-              onChange={(event) =>
-                updateDuplicantAppearance(model.id, "headshape", Number(event.target.value))
-              }
-              className="rounded-md border border-white/25 bg-black px-3 py-2 text-sm"
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="opacity-80">Eyes</span>
-            <input
-              type="number"
-              min="1"
-              value={model.appearance.eyesOrdinal}
-              onChange={(event) =>
-                updateDuplicantAppearance(model.id, "eyes", Number(event.target.value))
-              }
-              className="rounded-md border border-white/25 bg-black px-3 py-2 text-sm"
-            />
-          </label>
         </div>
       </div>
 

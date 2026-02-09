@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer } from "react";
 import { parseSaveInWorker, writeSaveInWorker } from "@/lib/oni/parser-client";
+import { isAccessoryAssetAvailable } from "@/lib/oni/accessory-constraints";
 import { getHashedStringHash, getSkillGroupHash } from "@/lib/oni/minion-interests";
 import { setPathValue } from "@/lib/oni/raw-path-utils";
 
@@ -1214,14 +1215,16 @@ export function SaveSessionProvider({ children }) {
       if (!["hair", "headshape", "eyes"].includes(normalizedType)) {
         return;
       }
-      const maxByType = {
-        headshape: 7,
-      };
       const nextOrdinal = Math.max(1, Math.floor(ordinal));
-      const max = maxByType[normalizedType];
-      const clampedOrdinal = Number.isFinite(max)
-        ? Math.min(max, nextOrdinal)
-        : nextOrdinal;
+      if (
+        normalizedType === "headshape" &&
+        !isAccessoryAssetAvailable("head", nextOrdinal)
+      ) {
+        return;
+      }
+      if (normalizedType === "hair" && !isAccessoryAssetAvailable("hair", nextOrdinal)) {
+        return;
+      }
       const next = mutateDuplicant(state.saveGame, duplicantId, (gameObject) =>
         updateBehaviorTemplate(gameObject, "Accessorizer", (template) => {
           if (!template || typeof template !== "object") {
@@ -1232,7 +1235,7 @@ export function SaveSessionProvider({ children }) {
             : [];
           return {
             ...template,
-            accessories: updateAccessoryList(accessories, normalizedType, clampedOrdinal),
+            accessories: updateAccessoryList(accessories, normalizedType, nextOrdinal),
           };
         })
       );

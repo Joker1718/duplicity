@@ -7,6 +7,7 @@ import DuplicantActionsPanel from "@/components/duplicant-actions-panel";
 import { useSaveSession } from "@/lib/save-session/save-session-context";
 import { selectDuplicants } from "@/lib/oni/save-selectors";
 import { HAIR_OFFSET_BASES } from "@/lib/oni/hair-offsets";
+import { getSafeAccessoryOrdinal } from "@/lib/oni/accessory-constraints";
 import { withBasePath } from "@/lib/asset-paths";
 
 const ACCESSORY_BASE_PATH = withBasePath("/images/oni");
@@ -22,7 +23,9 @@ function formatAccessoryOrdinal(ordinal) {
 }
 
 function getAccessorySrc(type, ordinal) {
-  const padded = formatAccessoryOrdinal(ordinal);
+  const safeType = type === "hair" ? "hair" : "head";
+  const safeOrdinal = getSafeAccessoryOrdinal(safeType, ordinal);
+  const padded = formatAccessoryOrdinal(safeOrdinal);
   return `${ACCESSORY_BASE_PATH}/${type}/${type}_${padded}.png`;
 }
 

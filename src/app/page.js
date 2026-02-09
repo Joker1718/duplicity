@@ -2,7 +2,11 @@
 
 import { useMemo } from "react";
 import { useSaveSession } from "@/lib/save-session/save-session-context";
-import { selectDifficultySettings } from "@/lib/oni/save-selectors";
+import {
+  getDifficultySettingLabel,
+  getDifficultyValueLabel,
+  selectDifficultySettings,
+} from "@/lib/oni/save-selectors";
 
 const SAVE_PATHS = {
   windows: "C:\\Users\\<Your Username>\\Documents\\Klei\\OxygenNotIncluded\\save_files\\",
@@ -108,8 +112,23 @@ function ErrorState({ error, canForceLoad, forceLoadPendingFile, pendingFileName
   );
 }
 
-function ReadyState({ summary, difficultyOptions, difficulty, onUpdateDifficulty }) {
-  const settingOrder = Object.keys(difficultyOptions);
+function ReadyState({
+  summary,
+  difficultyOptions,
+  difficulty,
+  difficultyOrder,
+  onUpdateDifficulty,
+}) {
+  const settingOrder =
+    Array.isArray(difficultyOrder) && difficultyOrder.length > 0
+      ? difficultyOrder
+      : Object.keys(difficultyOptions);
+
+  const isToggleOptions = (options) =>
+    Array.isArray(options) &&
+    options.length === 2 &&
+    options.includes("Enabled") &&
+    options.includes("Disabled");
 
   return (
     <section className="rounded-xl border border-black/10 p-5 dark:border-white/15">
@@ -122,22 +141,54 @@ function ReadyState({ summary, difficultyOptions, difficulty, onUpdateDifficulty
           {settingOrder.map((settingName) => {
             const options = difficultyOptions[settingName] || [];
             const selected = difficulty[settingName] ?? options[0] ?? "";
+            const label = getDifficultySettingLabel(settingName);
             return (
               <label key={settingName} className="flex flex-col gap-1 text-sm">
-                <span className="opacity-80">{settingName}</span>
-                <select
-                  value={selected}
-                  onChange={(event) =>
-                    onUpdateDifficulty(settingName, event.target.value)
-                  }
-                  className="rounded-md border border-white/25 bg-black px-2 py-2 text-sm"
-                >
-                  {options.map((value) => (
-                    <option key={value} value={value}>
-                      {value}
-                    </option>
-                  ))}
-                </select>
+                <span className="opacity-80">{label}</span>
+                {isToggleOptions(options) ? (
+                  <label className="flex items-center gap-2 rounded-md border border-white/15 bg-black/40 px-3 py-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={selected === "Enabled"}
+                      onChange={(event) =>
+                        onUpdateDifficulty(
+                          settingName,
+                          event.target.checked ? "Enabled" : "Disabled"
+                        )
+                      }
+                      className="h-4 w-4 accent-[var(--accent)]"
+                    />
+                    <span>
+                      {getDifficultyValueLabel(
+                        settingName,
+                        selected === "Enabled" ? "Enabled" : "Disabled"
+                      )}
+                    </span>
+                  </label>
+                ) : options.length > 0 ? (
+                  <select
+                    value={selected}
+                    onChange={(event) =>
+                      onUpdateDifficulty(settingName, event.target.value)
+                    }
+                    className="rounded-md border border-white/25 bg-black px-2 py-2 text-sm"
+                  >
+                    {options.map((value) => (
+                      <option key={value} value={value}>
+                        {getDifficultyValueLabel(settingName, value)}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    value={selected}
+                    onChange={(event) =>
+                      onUpdateDifficulty(settingName, event.target.value)
+                    }
+                    className="rounded-md border border-white/25 bg-black px-2 py-2 text-sm"
+                  />
+                )}
               </label>
             );
           })}
@@ -153,7 +204,7 @@ function ReadyState({ summary, difficultyOptions, difficulty, onUpdateDifficulty
 export default function OverviewPage() {
   const session = useSaveSession();
   const summary = useMemo(() => makeOverviewSummary(session), [session]);
-  const { optionsBySetting, selectedValues } = useMemo(
+  const { optionsBySetting, selectedValues, settingOrder } = useMemo(
     () => selectDifficultySettings(session.saveGame),
     [session.saveGame]
   );
@@ -176,6 +227,7 @@ export default function OverviewPage() {
           summary={summary}
           difficultyOptions={optionsBySetting}
           difficulty={selectedValues}
+          difficultyOrder={settingOrder}
           onUpdateDifficulty={session.updateDifficultySetting}
         />
       ) : null}

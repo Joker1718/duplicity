@@ -39,6 +39,7 @@ function DuplicantEditorPageContent() {
     removeDuplicantInterest,
     updateDuplicantAttributeLevel,
     updateDuplicantAppearance,
+    updateDuplicantGender,
     updateDuplicantHealthModifier,
     updateDuplicantExperience,
     setDuplicantSkillMastery,
@@ -156,6 +157,17 @@ function DuplicantEditorPageContent() {
     setNewEffectCycles("5");
     setNewEffectError("");
   }, [model?.effects, model?.availableEffects, model?.id]);
+
+  const genderOptions = useMemo(() => {
+    const options = ["MALE", "FEMALE"];
+    if (model?.gender && !options.includes(model.gender)) {
+      options.push(model.gender);
+    }
+    if (model?.genderStringKey && !options.includes(model.genderStringKey)) {
+      options.push(model.genderStringKey);
+    }
+    return options;
+  }, [model?.gender, model?.genderStringKey]);
 
   if (!hasSave) {
     return (
@@ -385,6 +397,35 @@ function DuplicantEditorPageContent() {
       </div>
 
       <div className="rounded-xl border border-white/20 p-4">
+        <h2 className="text-lg font-semibold">Identity</h2>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="opacity-80">Gender</span>
+            <select
+              value={model.gender || ""}
+              onChange={(event) => updateDuplicantGender(model.id, event.target.value)}
+              className="rounded-md border border-white/25 bg-black px-3 py-2 text-sm"
+            >
+              {genderOptions.map((gender) => (
+                <option key={gender} value={gender}>
+                  {gender}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="opacity-80">Gender String Key</span>
+            <input
+              type="text"
+              value={model.genderStringKey || ""}
+              readOnly
+              className="rounded-md border border-white/15 bg-black/40 px-3 py-2 text-sm opacity-80"
+            />
+          </label>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-white/20 p-4">
         <h2 className="text-lg font-semibold">Traits</h2>
         <div className="mt-3 flex flex-wrap gap-2">
           {model.traits.length === 0 ? (
@@ -540,6 +581,7 @@ function DuplicantEditorPageContent() {
             <input
               type="number"
               min="1"
+              max="7"
               value={model.appearance.headOrdinal}
               onChange={(event) =>
                 updateDuplicantAppearance(model.id, "headshape", Number(event.target.value))

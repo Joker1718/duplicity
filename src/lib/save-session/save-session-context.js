@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useReducer } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useReducer } from "react";
 import { parseSaveInWorker, writeSaveInWorker } from "@/lib/oni/parser-client";
 import { getHashedStringHash, getSkillGroupHash } from "@/lib/oni/minion-interests";
 import { setPathValue } from "@/lib/oni/raw-path-utils";
@@ -20,6 +20,8 @@ const BEHAVIOR_ALIASES = {
 };
 
 const ACCESSORY_PREFIX = "Root.Accessories.";
+const STRICTNESS_STORAGE_KEY = "duplicity.strictness";
+const DEFAULT_STRICTNESS = "major";
 
 const INITIAL_STATE = {
   status: "idle",
@@ -34,6 +36,7 @@ const INITIAL_STATE = {
   selectedDuplicantId: null,
   selectedCreatureId: null,
   pendingFile: null,
+  preferredStrictness: DEFAULT_STRICTNESS,
   lastLoadAttemptStrictness: "major",
   copyPasteData: null,
   importWarning: null,
@@ -41,6 +44,11 @@ const INITIAL_STATE = {
 
 function reducer(state, action) {
   switch (action.type) {
+    case "SET_STRICTNESS":
+      return {
+        ...state,
+        preferredStrictness: action.strictness || DEFAULT_STRICTNESS,
+      };
     case "LOAD_BEGIN":
       return {
         ...state,
@@ -163,6 +171,13 @@ function normalizeError(error) {
     code: error.code || null,
     stack: error.stack || null,
   };
+}
+
+function normalizeStrictness(value) {
+  if (value === "minor" || value === "none") {
+    return value;
+  }
+  return DEFAULT_STRICTNESS;
 }
 
 function hasSavExtension(fileName) {
@@ -699,6 +714,25 @@ async function hashObjectSha1(value) {
 export function SaveSessionProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
 
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(STRICTNESS_STORAGE_KEY);
+      if (stored) {
+        dispatch({ type: "SET_STRICTNESS", strictness: normalizeStrictness(stored) });
+      }
+    } catch {
+      // Ignore storage read failures.
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(STRICTNESS_STORAGE_KEY, state.preferredStrictness);
+    } catch {
+      // Ignore storage write failures.
+    }
+  }, [state.preferredStrictness]);
+
   const loadSaveFile = useCallback(async (file, options = {}) => {
     if (!file) {
       return;
@@ -710,7 +744,8 @@ export function SaveSessionProvider({ children }) {
       });
       return;
     }
-    const strictness = options.versionStrictness || "major";
+    const strictness =
+      options.versionStrictness || state.preferredStrictness || DEFAULT_STRICTNESS;
     dispatch({ type: "LOAD_BEGIN", file, strictness });
     try {
       const data = await file.arrayBuffer();
@@ -731,7 +766,7 @@ export function SaveSessionProvider({ children }) {
     } catch (error) {
       dispatch({ type: "LOAD_ERROR", error: normalizeError(error) });
     }
-  }, []);
+  }, [state.preferredStrictness]);
 
   const loadSaveWithPicker = useCallback(async (options = {}) => {
     if (typeof window === "undefined" || typeof window.showOpenFilePicker !== "function") {
@@ -831,6 +866,10 @@ export function SaveSessionProvider({ children }) {
       dispatch({ type: "SAVE_ERROR", error: normalizeError(error) });
     }
   }, [state.fileHandle, state.fileName, state.saveGame]);
+
+  const setParseStrictness = useCallback((strictness) => {
+    dispatch({ type: "SET_STRICTNESS", strictness: normalizeStrictness(strictness) });
+  }, []);
 
   const setSaveGame = useCallback((saveGame, options = {}) => {
     dispatch({
@@ -1103,7 +1142,14 @@ export function SaveSessionProvider({ children }) {
       if (!["hair", "headshape", "eyes"].includes(normalizedType)) {
         return;
       }
+      const maxByType = {
+        headshape: 7,
+      };
       const nextOrdinal = Math.max(1, Math.floor(ordinal));
+      const max = maxByType[normalizedType];
+      const clampedOrdinal = Number.isFinite(max)
+        ? Math.min(max, nextOrdinal)
+        : nextOrdinal;
       const next = mutateDuplicant(state.saveGame, duplicantId, (gameObject) =>
         updateBehaviorTemplate(gameObject, "Accessorizer", (template) => {
           if (!template || typeof template !== "object") {
@@ -1114,7 +1160,34 @@ export function SaveSessionProvider({ children }) {
             : [];
           return {
             ...template,
-            accessories: updateAccessoryList(accessories, normalizedType, nextOrdinal),
+            accessories: updateAccessoryList(accessories, normalizedType, clampedOrdinal),
+          };
+        })
+      );
+      setSaveGame(next, { isModified: next !== state.saveGame });
+    },
+    [setSaveGame, state.saveGame]
+  );
+
+  const updateDuplicantGender = useCallback(
+    (duplicantId, gender) => {
+      if (!state.saveGame) {
+        return;
+      }
+      const normalized = String(gender || "").toUpperCase();
+      const allowed = new Set(["MALE", "FEMALE", "NB"]);
+      if (!allowed.has(normalized)) {
+        return;
+      }
+      const next = mutateDuplicant(state.saveGame, duplicantId, (gameObject) =>
+        updateBehaviorTemplate(gameObject, "MinionIdentity", (template) => {
+          if (!template || typeof template !== "object") {
+            return template;
+          }
+          return {
+            ...template,
+            gender: normalized,
+            genderStringKey: normalized,
           };
         })
       );
@@ -1639,6 +1712,8 @@ export function SaveSessionProvider({ children }) {
       hasSave,
       isBusy,
       canForceLoad,
+      parseStrictness: state.preferredStrictness,
+      setParseStrictness,
       loadSaveFile,
       loadSaveWithPicker,
       forceLoadPendingFile,
@@ -1657,6 +1732,7 @@ export function SaveSessionProvider({ children }) {
       removeDuplicantInterest,
       updateDuplicantAttributeLevel,
       updateDuplicantAppearance,
+      updateDuplicantGender,
       updateDuplicantHealthModifier,
       updateDuplicantExperience,
       setDuplicantSkillMastery,
@@ -1694,6 +1770,7 @@ export function SaveSessionProvider({ children }) {
     loadSaveWithPicker,
     pasteDuplicantBehaviors,
     saveCurrentFile,
+    setParseStrictness,
     setDuplicantSkillMastery,
     setSaveGame,
     clearError,
@@ -1702,6 +1779,7 @@ export function SaveSessionProvider({ children }) {
     state,
     updateDuplicantAttributeLevel,
     updateDuplicantAppearance,
+    updateDuplicantGender,
     updateDuplicantEffectCycles,
     updateDuplicantExperience,
     updateDuplicantHealthModifier,

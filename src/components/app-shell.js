@@ -240,7 +240,6 @@ export default function AppShell({ children }) {
   const { t } = useI18n();
   const pageTitle = useMemo(() => getPageTitle(pathname, t), [pathname, t]);
   const fileInputRef = useRef(null);
-  const [strictness, setStrictness] = useState("major");
   const [showBackupPrompt, setShowBackupPrompt] = useState(false);
   const {
     status,
@@ -253,6 +252,7 @@ export default function AppShell({ children }) {
     canForceLoad,
     pendingFile,
     lastLoadAttemptStrictness,
+    parseStrictness,
     loadSaveFile,
     loadSaveWithPicker,
     retryLoadPendingFile,
@@ -283,7 +283,7 @@ export default function AppShell({ children }) {
 
   const onLoadButtonClick = async () => {
     const usedEnhancedPicker = await loadSaveWithPicker({
-      versionStrictness: strictness,
+      versionStrictness: parseStrictness,
     });
     if (!usedEnhancedPicker && fileInputRef.current) {
       fileInputRef.current.click();
@@ -320,7 +320,7 @@ export default function AppShell({ children }) {
     if (!file) {
       return;
     }
-    await loadSaveFile(file, { versionStrictness: strictness });
+    await loadSaveFile(file, { versionStrictness: parseStrictness });
     event.target.value = "";
   };
 
@@ -415,16 +415,6 @@ export default function AppShell({ children }) {
               >
                 {t("save-file.verbs.save_titlecase", { fallback: "Save" })}
               </button>
-              <select
-                value={strictness}
-                onChange={(event) => setStrictness(event.target.value)}
-                className="m3-field px-2 py-2 text-sm"
-                title={t("app.strictness.title", { fallback: "Parser version strictness" })}
-              >
-                <option value="major">major</option>
-                <option value="minor">minor</option>
-                <option value="none">none</option>
-              </select>
             </div>
             {error?.message ? (
               <div className="mt-3 rounded-lg border border-red-300/40 bg-[var(--error-surface)] p-3 text-sm">

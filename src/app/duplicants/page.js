@@ -1,13 +1,46 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import SaveRequiredPage from "@/components/save-required-page";
 import DuplicantActionsPanel from "@/components/duplicant-actions-panel";
 import { useSaveSession } from "@/lib/save-session/save-session-context";
 import { selectDuplicants } from "@/lib/oni/save-selectors";
+import { HAIR_OFFSET_BASES } from "@/lib/oni/hair-offsets";
 
-function DuplicantCard({ duplicant, onSelect }) {
+const ACCESSORY_BASE_PATH = "/images/oni";
+const PREVIEW_SIZE = 32;
+const CARD_SIZE = 32;
+const CARD_SCALE_RATIO = CARD_SIZE / PREVIEW_SIZE;
+
+function formatAccessoryOrdinal(ordinal) {
+  const safe = Number.isFinite(ordinal) ? Math.max(1, Math.floor(ordinal)) : 1;
+  return String(safe);
+}
+
+function getAccessorySrc(type, ordinal) {
+  const padded = formatAccessoryOrdinal(ordinal);
+  return `${ACCESSORY_BASE_PATH}/${type}/${type}_${padded}.png`;
+}
+
+function DuplicantCard({ duplicant, onSelect, hairOffsets }) {
+  const headshapeOrdinal = duplicant.appearance?.headOrdinal ?? 1;
+  const hairOrdinal = duplicant.appearance?.hairOrdinal ?? 1;
+  const hairOffset = hairOffsets?.[String(hairOrdinal)] ?? hairOffsets?.[hairOrdinal];
+  const baseOffset = HAIR_OFFSET_BASES[hairOrdinal] || {};
+  const rawOffsetX =
+    (Number.isFinite(baseOffset.x) ? baseOffset.x : 0) +
+    (Number.isFinite(hairOffset?.x) ? hairOffset.x : 0);
+  const rawOffsetY =
+    (Number.isFinite(baseOffset.y) ? baseOffset.y : 0) +
+    (Number.isFinite(hairOffset?.y) ? hairOffset.y : 0);
+  const rawScale =
+    (Number.isFinite(baseOffset.scale) ? baseOffset.scale : 1) *
+    (Number.isFinite(hairOffset?.scale) ? hairOffset.scale : 1);
+  const hairOffsetX = rawOffsetX * CARD_SCALE_RATIO;
+  const hairOffsetY = rawOffsetY * CARD_SCALE_RATIO;
+  const hairScale = 1 + (rawScale - 1) * CARD_SCALE_RATIO;
+
   return (
     <article className="w-full rounded-lg border border-black/10 p-4 dark:border-white/15">
       <div className="flex items-start gap-2">
@@ -22,6 +55,32 @@ function DuplicantCard({ duplicant, onSelect }) {
         >
           Edit
         </Link>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-4 border-t border-black/10 pt-3 dark:border-white/15">
+        <div className="flex items-center gap-3">
+          <div className="relative h-32 w-32 rounded-md border border-white/15 bg-black/30">
+            <img
+              src={getAccessorySrc("head", headshapeOrdinal)}
+              alt={`Headshape ${headshapeOrdinal}`}
+              className="absolute inset-0 h-full w-full object-contain"
+              loading="lazy"
+            />
+            <img
+              src={getAccessorySrc("hair", hairOrdinal)}
+              alt={`Hair ${hairOrdinal}`}
+              className="absolute inset-0 h-full w-full object-contain"
+              style={{
+                transform: `translate(${hairOffsetX}px, ${hairOffsetY}px) scale(${hairScale})`,
+                transformOrigin: "50% 50%",
+              }}
+              loading="lazy"
+            />
+          </div>
+          <div className="text-xs opacity-70">
+            Headshape {headshapeOrdinal} · Hair {hairOrdinal}
+          </div>
+        </div>
       </div>
 
       <div className="mt-3 border-t border-black/10 pt-3 dark:border-white/15">
@@ -64,6 +123,28 @@ function DuplicantCard({ duplicant, onSelect }) {
 export default function DuplicantsPage() {
   const { saveGame, hasSave, setSelectedDuplicantId } = useSaveSession();
   const duplicants = useMemo(() => selectDuplicants(saveGame), [saveGame]);
+  const [hairOffsets, setHairOffsets] = useState({});
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const stored = window.localStorage.getItem("duplicity.hairOffsets");
+    if (!stored) {
+      setHairOffsets({});
+      return;
+    }
+    try {
+      const parsed = JSON.parse(stored);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        setHairOffsets(parsed);
+      } else {
+        setHairOffsets({});
+      }
+    } catch (_error) {
+      setHairOffsets({});
+    }
+  }, []);
 
   if (!hasSave) {
     return (
@@ -87,6 +168,7 @@ export default function DuplicantsPage() {
               key={duplicant.id}
               duplicant={duplicant}
               onSelect={setSelectedDuplicantId}
+              hairOffsets={hairOffsets}
             />
           ))}
         </div>

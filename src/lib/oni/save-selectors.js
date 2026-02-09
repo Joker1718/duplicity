@@ -24,13 +24,145 @@ export const DUPLICANT_ATTRIBUTE_ORDER = [
   "Strength",
 ];
 
+const DIFFICULTY_SETTING_ORDER = [
+  "ImmuneSystem",
+  "CalorieBurn",
+  "Morale",
+  "Durability",
+  "MeteorShowers",
+  "Radiation",
+  "Stress",
+  "StressBreaks",
+  "CarePackages",
+  "SandboxMode",
+  "FastWorkersMode",
+  "Teleporters",
+  "BionicWattage",
+  "DemoliorDifficulty",
+];
+
+const DIFFICULTY_SETTING_IGNORE = new Set(["ClusterLayout", "WorldgenSeed", "SaveToCloud"]);
+const TOGGLE_OPTIONS = ["Disabled", "Enabled"];
+const DIFFICULTY_SCALE_OPTIONS = ["VeryHard", "Hard", "Default", "Easy", "VeryEasy"];
+
 const DEFAULT_DIFFICULTY_OPTIONS = {
   ImmuneSystem: ["Compromised", "Weak", "Default", "Strong", "Invincible"],
   Stress: ["Doomed", "Pessimistic", "Default", "Optimistic", "Indomitable"],
   Morale: ["VeryHard", "Hard", "Default", "Easy", "Disabled"],
   CalorieBurn: ["VeryHard", "Hard", "Default", "Easy", "Disabled"],
   StressBreaks: ["Disabled", "Default"],
-  SandboxMode: ["Disabled", "Enabled"],
+  SandboxMode: TOGGLE_OPTIONS,
+  CarePackages: TOGGLE_OPTIONS,
+  FastWorkersMode: TOGGLE_OPTIONS,
+  Teleporters: TOGGLE_OPTIONS,
+  Durability: ["Threadbare", "Flimsy", "Default", "Reinforced", "Indestructible"],
+  MeteorShowers: ["ClearSkies", "SpringShowers", "Default", "Intense", "Doomsday"],
+  Radiation: ["NukeProof", "HealthyGlow", "Default", "ToxicPositivity", "CriticalMass"],
+  BionicWattage: DIFFICULTY_SCALE_OPTIONS,
+  DemoliorDifficulty: DIFFICULTY_SCALE_OPTIONS,
+};
+
+const DIFFICULTY_SETTING_LABELS = {
+  ImmuneSystem: "Disease",
+  CalorieBurn: "Hunger",
+  Morale: "Morale",
+  Durability: "Durability",
+  MeteorShowers: "Meteor showers",
+  Radiation: "Radiation",
+  Stress: "Stress",
+  StressBreaks: "Stress reactions",
+  CarePackages: "Care packages",
+  SandboxMode: "Sandbox mode",
+  FastWorkersMode: "Fast workers",
+  Teleporters: "Teleporters",
+  BionicWattage: "Bionic wattage",
+  DemoliorDifficulty: "Demolior impact",
+};
+
+const DIFFICULTY_VALUE_LABELS = {
+  ImmuneSystem: {
+    Compromised: "Outbreak prone",
+    Weak: "Germ susceptible",
+    Default: "Default",
+    Strong: "Germ resistant",
+    Invincible: "Total immunity",
+  },
+  CalorieBurn: {
+    VeryHard: "Ravenous",
+    Hard: "Rumbly tummies",
+    Default: "Default",
+    Easy: "Fasting",
+    Disabled: "Tummyless",
+  },
+  Morale: {
+    VeryHard: "Draconian",
+    Hard: "A bit persnickety",
+    Default: "Default",
+    Easy: "Chill",
+    Disabled: "Totally blase",
+  },
+  Durability: {
+    Indestructible: "Indestructible",
+    Reinforced: "Reinforced",
+    Default: "Default",
+    Flimsy: "Flimsy",
+    Threadbare: "Threadbare",
+  },
+  MeteorShowers: {
+    ClearSkies: "Clear skies",
+    SpringShowers: "Spring showers",
+    Default: "Default",
+    Intense: "Cosmic storm",
+    Doomsday: "Doomsday",
+  },
+  Radiation: {
+    NukeProof: "Nuke-proof",
+    HealthyGlow: "Healthy glow",
+    Default: "Default",
+    ToxicPositivity: "Toxic positivity",
+    CriticalMass: "Critical mass",
+  },
+  Stress: {
+    Doomed: "Frankly depressing",
+    Pessimistic: "Glum",
+    Default: "Default",
+    Optimistic: "Chipper",
+    Indomitable: "Cloud nine",
+  },
+  StressBreaks: {
+    Disabled: "Disabled",
+    Default: "Default",
+  },
+  CarePackages: {
+    Disabled: "Disabled",
+    Enabled: "Enabled",
+  },
+  SandboxMode: {
+    Disabled: "Disabled",
+    Enabled: "Enabled",
+  },
+  FastWorkersMode: {
+    Disabled: "Disabled",
+    Enabled: "Enabled",
+  },
+  Teleporters: {
+    Disabled: "Disabled",
+    Enabled: "Enabled",
+  },
+  BionicWattage: {
+    VeryEasy: "Analog",
+    Easy: "Energy efficient",
+    Default: "Default",
+    Hard: "Power hungry",
+    VeryHard: "Energy vampire",
+  },
+  DemoliorDifficulty: {
+    VeryEasy: "Far-off forecast",
+    Easy: "Slightly delayed",
+    Default: "Default",
+    Hard: "Early arrival",
+    VeryHard: "Imminent extinction",
+  },
 };
 
 const DUPLICANT_HEALTH_MAX = {
@@ -207,10 +339,53 @@ export function selectDifficultySettings(saveGame) {
       }
     }
   }
+
+  const settingOrder = [
+    ...DIFFICULTY_SETTING_ORDER.filter((key) => key in selectedValues),
+    ...Object.keys(selectedValues).filter(
+      (key) =>
+        !DIFFICULTY_SETTING_IGNORE.has(key) &&
+        !DIFFICULTY_SETTING_ORDER.includes(key)
+    ),
+  ];
+
+  const optionsBySetting = {};
+  for (const settingName of settingOrder) {
+    const selected = selectedValues[settingName];
+    const baseOptions = DEFAULT_DIFFICULTY_OPTIONS[settingName];
+    if (Array.isArray(baseOptions) && baseOptions.length) {
+      optionsBySetting[settingName] =
+        selected && !baseOptions.includes(selected)
+          ? [...baseOptions, selected]
+          : baseOptions;
+      continue;
+    }
+    if (selected === "Enabled" || selected === "Disabled") {
+      optionsBySetting[settingName] = TOGGLE_OPTIONS;
+      continue;
+    }
+    optionsBySetting[settingName] = [];
+  }
   return {
-    optionsBySetting: DEFAULT_DIFFICULTY_OPTIONS,
+    optionsBySetting,
     selectedValues,
+    settingOrder,
   };
+}
+
+export function getDifficultySettingLabel(settingName) {
+  return DIFFICULTY_SETTING_LABELS[settingName] || settingName;
+}
+
+export function getDifficultyValueLabel(settingName, value) {
+  const labels = DIFFICULTY_VALUE_LABELS[settingName];
+  if (labels && labels[value]) {
+    return labels[value];
+  }
+  if (!value) {
+    return "";
+  }
+  return String(value).replace(/([a-z])([A-Z])/g, "$1 $2");
 }
 
 export function selectDuplicants(saveGame) {
@@ -232,6 +407,7 @@ export function selectDuplicants(saveGame) {
       "Klei.AI.AttributeLevels",
       "AttributeLevels",
     ]);
+    const accessorizerBehavior = getBehavior(gameObject, "Accessorizer");
 
     const rawAttributes = Array.isArray(attributesBehavior?.templateData?.saveLoadLevels)
       ? attributesBehavior.templateData.saveLoadLevels
@@ -252,6 +428,7 @@ export function selectDuplicants(saveGame) {
       traits: Array.isArray(traitsBehavior?.templateData?.TraitIds)
         ? traitsBehavior.templateData.TraitIds
         : [],
+      appearance: readAccessoryOrdinals(accessorizerBehavior?.templateData?.accessories),
       attributes: DUPLICANT_ATTRIBUTE_ORDER.map((attributeId) => ({
         attributeId,
         levelLabel: levelWithSign(attributeMap[attributeId]),
@@ -279,6 +456,7 @@ export function selectDuplicantEditorModel(saveGame, duplicantId) {
 
   const source = minions.find((obj) => getGameObjectId(obj) === duplicantId);
 
+  const identityBehavior = getBehavior(source, "MinionIdentity");
   const attributesBehavior = getBehaviorAny(source, [
     "Klei.AI.AttributeLevels",
     "AttributeLevels",
@@ -339,6 +517,8 @@ export function selectDuplicantEditorModel(saveGame, duplicantId) {
       attributeId,
       level: Number.isFinite(attributeMap[attributeId]) ? attributeMap[attributeId] : 0,
     })),
+    gender: asString(identityBehavior?.templateData?.gender, "UNKNOWN"),
+    genderStringKey: asString(identityBehavior?.templateData?.genderStringKey, "UNKNOWN"),
     appearance: readAccessoryOrdinals(accessorizerBehavior?.templateData?.accessories),
     health: readHealthModifiers(modifiersBehavior),
     skills: readSkillModel(resumeBehavior),

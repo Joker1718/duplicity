@@ -425,6 +425,10 @@ export function selectDuplicants(saveGame) {
     list.push({
       id,
       name: asString(identity?.templateData?.name, `Duplicant ${id}`),
+      gender: asString(
+        identity?.templateData?.genderStringKey ?? identity?.templateData?.gender,
+        "UNKNOWN"
+      ),
       traits: Array.isArray(traitsBehavior?.templateData?.TraitIds)
         ? traitsBehavior.templateData.TraitIds
         : [],

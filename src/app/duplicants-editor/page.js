@@ -20,6 +20,7 @@ const CARD_SIZE = 32;
 const CARD_CONTENT_SCALE = 0.65;
 const CARD_CONTENT_OFFSET_Y = 25;
 const CARD_SCALE_RATIO = CARD_SIZE / PREVIEW_SIZE;
+const CAROUSEL_NAME_MAX = 12;
 
 function formatAccessoryOrdinal(ordinal) {
   const safe = Number.isFinite(ordinal) ? Math.max(1, Math.floor(ordinal)) : 1;
@@ -29,6 +30,13 @@ function formatAccessoryOrdinal(ordinal) {
 function getAccessorySrc(type, ordinal) {
   const padded = formatAccessoryOrdinal(ordinal);
   return `${ACCESSORY_BASE_PATH}/${type}/${type}_${padded}.png`;
+}
+
+function truncateName(name) {
+  if (!name || name.length <= CAROUSEL_NAME_MAX) {
+    return name;
+  }
+  return `${name.slice(0, Math.max(0, CAROUSEL_NAME_MAX - 3))}...`;
 }
 
 function DuplicantEditorFallback() {
@@ -133,6 +141,9 @@ function DuplicantEditorPageContent() {
   const cardRefs = useRef({});
   const [carouselPad, setCarouselPad] = useState(0);
   const carouselDragRef = useRef(null);
+  const suppressCarouselClickRef = useRef(false);
+
+  const CAROUSEL_DRAG_THRESHOLD = 6;
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -214,10 +225,11 @@ function DuplicantEditorPageContent() {
     }
     carouselDragRef.current = {
       startX: event.clientX,
+      startY: event.clientY,
       startScrollLeft: container.scrollLeft,
       pointerId: event.pointerId,
+      didDrag: false,
     };
-    container.setPointerCapture?.(event.pointerId);
   }, []);
 
   const onCarouselPointerMove = useCallback((event) => {
@@ -227,6 +239,18 @@ function DuplicantEditorPageContent() {
       return;
     }
     const deltaX = event.clientX - drag.startX;
+    const deltaY = event.clientY - drag.startY;
+    if (!drag.didDrag) {
+      if (
+        Math.abs(deltaX) < CAROUSEL_DRAG_THRESHOLD &&
+        Math.abs(deltaY) < CAROUSEL_DRAG_THRESHOLD
+      ) {
+        return;
+      }
+      drag.didDrag = true;
+      container.setPointerCapture?.(drag.pointerId);
+    }
+    event.preventDefault();
     container.scrollLeft = drag.startScrollLeft - deltaX;
   }, []);
 
@@ -236,7 +260,13 @@ function DuplicantEditorPageContent() {
     if (!container || !drag) {
       return;
     }
-    container.releasePointerCapture?.(drag.pointerId);
+    if (drag.didDrag) {
+      container.releasePointerCapture?.(drag.pointerId);
+      suppressCarouselClickRef.current = true;
+      setTimeout(() => {
+        suppressCarouselClickRef.current = false;
+      }, 0);
+    }
     carouselDragRef.current = null;
   }, []);
 
@@ -293,6 +323,18 @@ function DuplicantEditorPageContent() {
     ],
     []
   );
+  const genderShortLabel = useCallback((value) => {
+    switch (value) {
+      case "FEMALE":
+        return "F";
+      case "MALE":
+        return "M";
+      case "NB":
+        return "X";
+      default:
+        return "?";
+    }
+  }, []);
 
   if (!hasSave) {
     return (
@@ -547,7 +589,12 @@ function DuplicantEditorPageContent() {
                 <button
                   key={duplicant.id}
                   type="button"
-                  onClick={() => onSelectDuplicant(duplicant.id)}
+                  onClick={() => {
+                    if (suppressCarouselClickRef.current) {
+                      return;
+                    }
+                    onSelectDuplicant(duplicant.id);
+                  }}
                   ref={(node) => {
                     if (node) {
                       cardRefs.current[duplicant.id] = node;
@@ -584,7 +631,8 @@ function DuplicantEditorPageContent() {
                     />
                   </div>
                   <div className="text-xs opacity-80">
-                    {duplicant.name} ({duplicant.id})
+                    {truncateName(duplicant.name)} ({duplicant.id}){" "}
+                    {genderShortLabel(duplicant.gender)}
                   </div>
                 </button>
               );
@@ -603,30 +651,29 @@ function DuplicantEditorPageContent() {
       </header>
 
       <div className="rounded-xl border border-white/20 p-4">
-        <h2 className="text-lg font-semibold">Name</h2>
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <input
-            type="text"
-            value={nameDraft}
-            onChange={(event) => setNameDraft(event.target.value)}
-            maxLength={MAX_NAME_LENGTH}
-            className="min-w-[240px] rounded-md border border-white/25 bg-black px-3 py-2 text-sm"
-          />
-          <button
-            type="button"
-            onClick={onApplyName}
-            className="rounded-md bg-[var(--accent)] px-3 py-2 text-sm font-semibold text-black hover:brightness-110"
-          >
-            Apply Name
-          </button>
-        </div>
-        {nameError ? <p className="mt-2 text-xs text-red-300">{nameError}</p> : null}
-      </div>
-
-      <div className="rounded-xl border border-white/20 p-4">
         <h2 className="text-lg font-semibold">Identity</h2>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          <label className="flex flex-col gap-1 text-sm">
+        <div className="mt-3 flex flex-wrap items-end gap-3">
+          <label className="flex min-w-[360px] flex-1 flex-col gap-1 text-sm">
+            <span className="opacity-80">Name</span>
+            <div className="flex flex-1 items-center gap-2">
+              <input
+                type="text"
+                value={nameDraft}
+                onChange={(event) => setNameDraft(event.target.value)}
+                maxLength={MAX_NAME_LENGTH}
+                className="min-w-[320px] flex-1 rounded-md border border-white/25 bg-black px-3 py-2 text-sm"
+              />
+              <button
+                type="button"
+                onClick={onApplyName}
+                className="rounded-md bg-[var(--accent)] px-3 py-2 text-sm font-semibold text-black hover:brightness-110"
+              >
+                Apply Name
+              </button>
+            </div>
+            {nameError ? <p className="mt-2 text-xs text-red-300">{nameError}</p> : null}
+          </label>
+          <label className="flex w-[180px] flex-col gap-1 text-sm">
             <span className="opacity-80">Gender</span>
             <select
               value={model.gender || "FEMALE"}
@@ -639,6 +686,16 @@ function DuplicantEditorPageContent() {
                 </option>
               ))}
             </select>
+          </label>
+          <label className="flex w-[200px] flex-col gap-1 text-sm">
+            <span className="opacity-80">Appearance</span>
+            <button
+              type="button"
+              disabled
+              className="rounded-md border border-white/25 px-3 py-2 text-sm font-semibold opacity-60"
+            >
+              Edit Appearance
+            </button>
           </label>
         </div>
       </div>

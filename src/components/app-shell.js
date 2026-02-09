@@ -17,19 +17,24 @@ const NAV_ITEMS = [
   { href: "/changelog", i18nKey: "changelog.title", fallback: "Changelog", saveRequired: false },
 ];
 
+function normalizePathname(pathname) {
+  if (!pathname || pathname === "/") {
+    return "/";
+  }
+  return pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
+}
+
 function getPageTitle(pathname, t) {
-  const normalizedPathname =
-    !pathname || pathname === "/"
-      ? "/"
-      : pathname.endsWith("/")
-        ? pathname.slice(0, -1)
-        : pathname;
+  const normalizedPathname = normalizePathname(pathname);
 
   if (normalizedPathname === "/") {
     return t("app.page-title.home", { fallback: "Duplicity V4" });
   }
+  if (normalizedPathname.startsWith("/duplicants-editor")) {
+    return t("app.page-title.duplicant-editor", { fallback: "Duplicant Editor" });
+  }
   if (normalizedPathname.startsWith("/duplicants")) {
-    return t("app.page-title.duplicants", { fallback: "Duplicants Management" });
+    return t("app.page-title.duplicants", { fallback: "Duplicant Management" });
   }
   if (normalizedPathname.startsWith("/creatures")) {
     return t("app.page-title.creatures", { fallback: "Creatures Management" });
@@ -238,6 +243,8 @@ function BackupPromptDialog({ open, onConfirm, onSkip, onCancel, t }) {
 export default function AppShell({ children }) {
   const pathname = usePathname();
   const { t } = useI18n();
+  const normalizedPathname = useMemo(() => normalizePathname(pathname), [pathname]);
+  const isDuplicantEditor = normalizedPathname.startsWith("/duplicants-editor");
   const pageTitle = useMemo(() => getPageTitle(pathname, t), [pathname, t]);
   const fileInputRef = useRef(null);
   const [showBackupPrompt, setShowBackupPrompt] = useState(false);
@@ -348,125 +355,137 @@ export default function AppShell({ children }) {
       <div className="mx-auto flex h-full w-full max-w-[1432px] flex-col p-3">
         <div className="flex min-h-0 flex-1 gap-4">
           <aside className="m3-surface hidden h-full w-64 overflow-y-auto p-4 md:block">
-          <h1 className="text-lg font-semibold">Duplicity</h1>
-          <p className="mt-2 text-xs uppercase tracking-wide opacity-70">
-            {t("app.status-label", { fallback: "Status" })}: {statusText}
-          </p>
-          <nav className="mt-5 space-y-1">
-            {NAV_ITEMS.map((item) => {
-              const saveLocked = item.saveRequired && !hasSave;
-              const disabled = saveLocked || item.implemented === false;
-              const active = isActive(pathname, item.href);
-              if (disabled) {
+            <h1 className="text-lg font-semibold">Duplicity</h1>
+            <p className="mt-2 text-xs uppercase tracking-wide opacity-70">
+              {t("app.status-label", { fallback: "Status" })}: {statusText}
+            </p>
+            <nav className="mt-5 space-y-1">
+              {NAV_ITEMS.map((item) => {
+                const saveLocked = item.saveRequired && !hasSave;
+                const disabled = saveLocked || item.implemented === false;
+                const active = isActive(pathname, item.href);
+                if (disabled) {
+                  return (
+                    <span
+                      key={item.href}
+                      className="m3-nav-item m3-nav-item-disabled block px-3 py-2 text-sm"
+                      title={
+                        item.implemented === false
+                          ? t("app.nav.planned-title", {
+                              fallback: "Planned but not implemented in V4 yet.",
+                            })
+                          : t("app.nav.load-save-first", { fallback: "Load a save first." })
+                      }
+                    >
+                      {t(item.i18nKey, { fallback: item.fallback })}
+                    </span>
+                  );
+                }
                 return (
-                  <span
+                  <Link
                     key={item.href}
-                    className="m3-nav-item m3-nav-item-disabled block px-3 py-2 text-sm"
-                    title={
-                      item.implemented === false
-                        ? t("app.nav.planned-title", {
-                            fallback: "Planned but not implemented in V4 yet.",
-                          })
-                        : t("app.nav.load-save-first", { fallback: "Load a save first." })
-                    }
+                    href={item.href}
+                    className={`m3-nav-item block px-3 py-2 text-sm ${
+                      active ? "m3-nav-item-active" : ""
+                    }`}
                   >
                     {t(item.i18nKey, { fallback: item.fallback })}
-                  </span>
+                  </Link>
                 );
-              }
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`m3-nav-item block px-3 py-2 text-sm ${
-                    active ? "m3-nav-item-active" : ""
-                  }`}
-                >
-                  {t(item.i18nKey, { fallback: item.fallback })}
-                </Link>
-              );
-            })}
-          </nav>
+              })}
+            </nav>
           </aside>
 
           <div className="m3-surface flex min-h-0 w-full flex-col overflow-hidden md:max-w-[1136px]">
             <header className="border-b border-[var(--outline)] bg-[var(--surface)] px-4 py-3 sm:px-6">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="mr-auto text-lg font-semibold">{pageTitle}</h2>
-              <Link
-                href="/settings"
-                className="m3-button m3-button-outlined px-3 py-2 text-sm"
-              >
-                {t("app.page-title.settings", { fallback: "Settings" })}
-              </Link>
-              <button
-                type="button"
-                onClick={onLoadButtonClick}
-                disabled={isBusy}
-                className="m3-button m3-button-outlined px-3 py-2 text-sm"
-              >
-                {t("save-file.verbs.load_titlecase", { fallback: "Load" })}
-              </button>
-              <button
-                type="button"
-                onClick={onSaveButtonClick}
-                disabled={isBusy || !hasSave}
-                className="m3-button m3-button-tonal px-3 py-2 text-sm"
-              >
-                {t("save-file.verbs.save_titlecase", { fallback: "Save" })}
-              </button>
-            </div>
-            {error?.message ? (
-              <div className="mt-3 rounded-lg border border-red-300/40 bg-[var(--error-surface)] p-3 text-sm">
-                <p className="font-semibold text-[var(--error)]">{errorGuidance.title}</p>
-                <p className="mt-1 text-xs text-[var(--error)]/90">{errorGuidance.detail}</p>
-                <p className="mt-1 text-xs text-[var(--error)]/90">
-                  {error.message}
-                  {error.code ? (
-                    <>
-                      {" "}
-                      (<code>{error.code}</code>)
-                    </>
-                  ) : null}
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {pendingFile ? (
-                    <button
-                      type="button"
-                      onClick={retryLoadPendingFile}
-                      disabled={isBusy}
-                      className="m3-button m3-button-outlined border-red-200/60 px-2 py-1 text-xs text-[var(--error)]"
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="mr-auto flex items-center gap-2">
+                  {isDuplicantEditor ? (
+                    <Link
+                      href="/duplicants"
+                      aria-label="Back to Duplicant Management"
+                      title="Back to Duplicant Management"
+                      className="m3-button m3-button-outlined px-2 py-2 text-sm"
                     >
-                      Retry ({lastLoadAttemptStrictness})
-                    </button>
+                      <span aria-hidden="true">&lt;</span>
+                    </Link>
                   ) : null}
-                  {canForceLoad ? (
-                    <button
-                      type="button"
-                      onClick={forceLoadPendingFile}
-                      disabled={isBusy}
-                      className="m3-button m3-button-outlined border-red-200/60 px-2 py-1 text-xs text-[var(--error)]"
-                    >
-                      {t("app.error.force-load-major", { fallback: "Force Load (major)" })}
-                    </button>
-                  ) : null}
-                  <button
-                    type="button"
-                    onClick={clearError}
-                    className="m3-button m3-button-outlined border-red-200/60 px-2 py-1 text-xs text-[var(--error)]"
-                  >
-                    {t("app.error.dismiss", { fallback: "Dismiss" })}
-                  </button>
+                  <h2 className="text-lg font-semibold">{pageTitle}</h2>
                 </div>
+                <Link
+                  href="/settings"
+                  className="m3-button m3-button-outlined px-3 py-2 text-sm"
+                >
+                  {t("app.page-title.settings", { fallback: "Settings" })}
+                </Link>
+                <button
+                  type="button"
+                  onClick={onLoadButtonClick}
+                  disabled={isBusy}
+                  className="m3-button m3-button-outlined px-3 py-2 text-sm"
+                >
+                  {t("save-file.verbs.load_titlecase", { fallback: "Load" })}
+                </button>
+                <button
+                  type="button"
+                  onClick={onSaveButtonClick}
+                  disabled={isBusy || !hasSave}
+                  className="m3-button m3-button-tonal px-3 py-2 text-sm"
+                >
+                  {t("save-file.verbs.save_titlecase", { fallback: "Save" })}
+                </button>
               </div>
-            ) : null}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".sav"
-              className="hidden"
-              onChange={onFileChange}
-            />
+              {error?.message ? (
+                <div className="mt-3 rounded-lg border border-red-300/40 bg-[var(--error-surface)] p-3 text-sm">
+                  <p className="font-semibold text-[var(--error)]">{errorGuidance.title}</p>
+                  <p className="mt-1 text-xs text-[var(--error)]/90">{errorGuidance.detail}</p>
+                  <p className="mt-1 text-xs text-[var(--error)]/90">
+                    {error.message}
+                    {error.code ? (
+                      <>
+                        {" "}
+                        (<code>{error.code}</code>)
+                      </>
+                    ) : null}
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {pendingFile ? (
+                      <button
+                        type="button"
+                        onClick={retryLoadPendingFile}
+                        disabled={isBusy}
+                        className="m3-button m3-button-outlined border-red-200/60 px-2 py-1 text-xs text-[var(--error)]"
+                      >
+                        Retry ({lastLoadAttemptStrictness})
+                      </button>
+                    ) : null}
+                    {canForceLoad ? (
+                      <button
+                        type="button"
+                        onClick={forceLoadPendingFile}
+                        disabled={isBusy}
+                        className="m3-button m3-button-outlined border-red-200/60 px-2 py-1 text-xs text-[var(--error)]"
+                      >
+                        {t("app.error.force-load-major", { fallback: "Force Load (major)" })}
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={clearError}
+                      className="m3-button m3-button-outlined border-red-200/60 px-2 py-1 text-xs text-[var(--error)]"
+                    >
+                      {t("app.error.dismiss", { fallback: "Dismiss" })}
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".sav"
+                className="hidden"
+                onChange={onFileChange}
+              />
             </header>
             <main className="flex-1 overflow-auto bg-[var(--surface-container)] px-4 py-6">
               {children}

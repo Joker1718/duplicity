@@ -4,9 +4,9 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import SaveRequiredPage from "@/components/save-required-page";
-import DuplicantActionsPanel from "@/components/duplicant-actions-panel";
 import { useSaveSession } from "@/lib/save-session/save-session-context";
 import { selectDuplicantEditorModel, selectDuplicants } from "@/lib/oni/save-selectors";
+import { HAIR_OFFSET_BASES } from "@/lib/oni/hair-offsets";
 
 const TRAIT_ID_PATTERN = /^[A-Za-z][A-Za-z0-9._-]*$/;
 const ATTRIBUTE_MIN_LEVEL = -20;
@@ -14,6 +14,20 @@ const ATTRIBUTE_MAX_LEVEL = 99;
 const MAX_NAME_LENGTH = 64;
 const EXPERIENCE_MIN = 0;
 const HEALTH_MIN = 0;
+const ACCESSORY_BASE_PATH = "/images/oni";
+const PREVIEW_SIZE = 32;
+const CARD_SIZE = 32;
+const CARD_SCALE_RATIO = CARD_SIZE / PREVIEW_SIZE;
+
+function formatAccessoryOrdinal(ordinal) {
+  const safe = Number.isFinite(ordinal) ? Math.max(1, Math.floor(ordinal)) : 1;
+  return String(safe);
+}
+
+function getAccessorySrc(type, ordinal) {
+  const padded = formatAccessoryOrdinal(ordinal);
+  return `${ACCESSORY_BASE_PATH}/${type}/${type}_${padded}.png`;
+}
 
 function DuplicantEditorFallback() {
   return (
@@ -112,6 +126,28 @@ function DuplicantEditorPageContent() {
   const [newEffectId, setNewEffectId] = useState("");
   const [newEffectCycles, setNewEffectCycles] = useState("5");
   const [newEffectError, setNewEffectError] = useState("");
+  const [hairOffsets, setHairOffsets] = useState({});
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const stored = window.localStorage.getItem("duplicity.hairOffsets");
+    if (!stored) {
+      setHairOffsets({});
+      return;
+    }
+    try {
+      const parsed = JSON.parse(stored);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        setHairOffsets(parsed);
+      } else {
+        setHairOffsets({});
+      }
+    } catch (_error) {
+      setHairOffsets({});
+    }
+  }, []);
 
   useEffect(() => {
     setNameDraft(model?.name || "");
@@ -347,31 +383,66 @@ function DuplicantEditorPageContent() {
     router.replace(`/duplicants-editor?id=${id}`);
   };
 
+  const headshapeOrdinal = model.appearance?.headOrdinal ?? 1;
+  const hairOrdinal = model.appearance?.hairOrdinal ?? 1;
+  const hairOffset = hairOffsets?.[String(hairOrdinal)] ?? hairOffsets?.[hairOrdinal];
+  const baseOffset = HAIR_OFFSET_BASES[hairOrdinal] || {};
+  const rawOffsetX =
+    (Number.isFinite(baseOffset.x) ? baseOffset.x : 0) +
+    (Number.isFinite(hairOffset?.x) ? hairOffset.x : 0);
+  const rawOffsetY =
+    (Number.isFinite(baseOffset.y) ? baseOffset.y : 0) +
+    (Number.isFinite(hairOffset?.y) ? hairOffset.y : 0);
+  const rawScale =
+    (Number.isFinite(baseOffset.scale) ? baseOffset.scale : 1) *
+    (Number.isFinite(hairOffset?.scale) ? hairOffset.scale : 1);
+  const hairOffsetX = rawOffsetX * CARD_SCALE_RATIO;
+  const hairOffsetY = rawOffsetY * CARD_SCALE_RATIO;
+  const hairScale = 1 + (rawScale - 1) * CARD_SCALE_RATIO;
+
   return (
     <section className="space-y-4">
       <header className="rounded-xl border border-white/20 p-4">
-        <h1 className="text-2xl font-semibold">Duplicant Editor</h1>
-        <p className="mt-1 text-sm opacity-75">
-          V3 parity: full duplicant editing including appearance, health, skills, and effects.
-        </p>
-        <div className="mt-3">
-          <label className="text-xs font-semibold uppercase tracking-wide opacity-70">
-            Duplicant
-          </label>
-          <select
-            value={model.id}
-            onChange={(event) => onSelectDuplicant(Number(event.target.value))}
-            className="mt-1 w-full rounded-md border border-white/25 bg-black px-3 py-2 text-sm sm:max-w-sm"
-          >
-            {duplicants.map((duplicant) => (
-              <option key={duplicant.id} value={duplicant.id}>
-                {duplicant.name} ({duplicant.id})
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="mt-3">
-          <DuplicantActionsPanel duplicantId={model.id} duplicantName={model.name} />
+        <div className="flex flex-wrap items-start gap-4">
+          <div className="flex items-center gap-3">
+            <div className="relative h-32 w-32 rounded-md border border-white/15 bg-black/30">
+              <img
+                src={getAccessorySrc("head", headshapeOrdinal)}
+                alt={`Headshape ${headshapeOrdinal}`}
+                className="absolute inset-0 h-full w-full object-contain"
+                loading="lazy"
+              />
+              <img
+                src={getAccessorySrc("hair", hairOrdinal)}
+                alt={`Hair ${hairOrdinal}`}
+                className="absolute inset-0 h-full w-full object-contain"
+                style={{
+                  transform: `translate(${hairOffsetX}px, ${hairOffsetY}px) scale(${hairScale})`,
+                  transformOrigin: "50% 50%",
+                }}
+                loading="lazy"
+              />
+            </div>
+            <div className="text-xs opacity-70">
+              Headshape {headshapeOrdinal} · Hair {hairOrdinal}
+            </div>
+          </div>
+          <div className="min-w-[220px] flex-1">
+            <label className="text-xs font-semibold uppercase tracking-wide opacity-70">
+              Duplicant
+            </label>
+            <select
+              value={model.id}
+              onChange={(event) => onSelectDuplicant(Number(event.target.value))}
+              className="mt-1 w-full rounded-md border border-white/25 bg-black px-3 py-2 text-sm sm:max-w-sm"
+            >
+              {duplicants.map((duplicant) => (
+                <option key={duplicant.id} value={duplicant.id}>
+                  {duplicant.name} ({duplicant.id})
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </header>
 

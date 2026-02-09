@@ -1,5 +1,5 @@
-import baseTraits from "../../../references/oni_traits.json";
-import knownTraits from "../../../references/oni_traits_known.json";
+import baseTraits from "./traits-data/oni_traits.json";
+import knownTraits from "./traits-data/oni_traits_known.json";
 import {
   BIONIC_TRAITS,
   DUPE_OVERJOYED_REACTION_IDS,

@@ -1,30 +1,57 @@
+## 4.0.2
+
+Patch release focused on Raw Editor usability and shared UI consistency.
+
+### Raw Editor
+- Replaced legacy tree markers with consistent chevron icons and muted leaf markers.
+- Fixed tree row alignment issues between expand/collapse controls and labels.
+- Added lazy loading for object children in batches of 50 as you scroll.
+- Added lazy loading for primitive fields in batches of 50 as you scroll.
+- Replaced hard "Showing first ..." caps with progressive "Loaded X of Y" indicators.
+
+### Shared UI
+- Added reusable `m3-button-ghost` for neutral controls in dense/editor contexts.
+- Added reusable circular icon button and standardized chevron controls where applied.
+- Updated dropdown behavior to use adaptive scrolling (no scrollbar for short lists, thin scrollbar for long lists).
+
 ## 4.0.1
 
-- Duplicant editor carousel now supports drag-to-slide with centered selection.
-- Non-selected carousel cards render in grayscale and restore on hover.
-- Carousel name labels truncate to prevent overflow.
-- Gender selection unified with `FEMALE/MALE/NB` mapping and F/M/X display.
-- Identity editor decluttered into a single row with Name, Gender, Appearance.
-- Hair/head avatars now use baked offsets with the offset tool for alignment.
+Patch release focused on Duplicant Editor UX parity with V3 workflows.
+
+### Duplicant Editor
+- Added drag-to-slide carousel with centered active selection behavior.
+- Added previous/next navigation controls and improved card interaction behavior.
+- Non-selected cards now render in grayscale and restore color on hover.
+- Carousel labels now truncate long names to prevent layout overflow.
+- Unified gender editing to `FEMALE` / `MALE` / `NB` with `F/M/X` display shorthand.
+- Simplified Identity block layout to reduce editor clutter.
+
+### Appearance Preview
+- Added baked hair offset support and alignment tooling integration.
+- Improved avatar rendering consistency between list cards and editor views.
 
 ## 4.0.0
 
-Major V4 rewrite focused on speed, safety, and a modern UI. This release brings V3 parity in a new architecture and unlocks GitHub Pages-first delivery.
+V4 launch. Full rewrite from the V3 codebase.
 
-Highlights:
-- Full Next.js rewrite with static export for GitHub Pages.
-- New in-browser save pipeline with worker-based parse/write and progress UI.
-- Duplicants and Geysers editors fully rebuilt for parity.
-- Raw editor redesigned with explorer-style layout and improved responsiveness.
-- Settings language selector (English only). Translators welcome.
-- Enhanced load/save workflow:
-  - .sav-only load enforcement
-  - optional in-place save on supported browsers
-  - backup prompt before overwrite
-- Cleaner app shell, navigation, and layout system with consistent styling.
+### Rewrite Scope (V3 -> V4)
+- Rebuilt the app architecture with Next.js static export targeting GitHub Pages.
+- Replaced V3 page/data flow with a new save-session driven editor model.
+- Reworked parser integration for browser-safe read/write flows with progress feedback.
 
-Notes:
-- V4 is a clean-slate rewrite of the UI and data flow.
+### Core Platform
+- New app shell, routing guards, and save-required navigation behavior.
+- New save workflow: `.sav`-focused loading, safer saving, and backup-aware overwrite flow.
+- Export-safe routing and deployment model for GitHub Pages.
+
+### Feature Parity Delivered
+- Duplicants domain migrated with modernized editing UX.
+- Geysers domain migrated with parity controls.
+- Raw Editor migrated and redesigned in explorer layout.
+- Settings migrated with English-first translation baseline.
+
+### Notes
+- V4 is a clean-slate implementation, not a direct code migration from V3.
 - Secondary V3-only routes (Materials, Planets) remain planned.
 
 ---

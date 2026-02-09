@@ -6,7 +6,7 @@ const array_writer_1 = require("./array-writer");
 class ZlibDataWriter extends array_writer_1.ArrayDataWriter {
     getBytes() {
         const bytes = super.getBytesView();
-        return pako_1.deflate(bytes, {
+        return (0, pako_1.deflate)(bytes, {
             windowBits: 15
         }).buffer;
     }

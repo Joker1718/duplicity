@@ -1,18 +1,49 @@
-export const MINION_SKILL_GROUP_NAMES = [
+export const DUPLICANT_INTEREST_NAMES = [
   "Farming",
   "Ranching",
   "Mining",
   "Cooking",
   "Art",
   "Building",
-  "Management",
   "Research",
+  "Rocketry",
   "Suits",
   "Hauling",
   "Technicals",
   "MedicalAid",
   "Basekeeping",
 ];
+
+// Older saves can still carry this group, so we keep it readable.
+export const LEGACY_INTEREST_NAMES = ["Management"];
+
+// Present in save data, but not editable for non-bionic flows yet.
+export const BIONIC_ONLY_INTEREST_NAMES = ["BionicSkills"];
+
+export const MINION_SKILL_GROUP_NAMES = [
+  ...DUPLICANT_INTEREST_NAMES,
+  ...LEGACY_INTEREST_NAMES,
+  ...BIONIC_ONLY_INTEREST_NAMES,
+];
+
+// Source: references/oni_dump -> CHOREGROUPS names.
+export const MINION_SKILL_GROUP_DISPLAY_NAMES = {
+  Art: "Decorating",
+  Building: "Building",
+  Cooking: "Cooking",
+  Farming: "Farming",
+  Ranching: "Ranching",
+  Mining: "Digging",
+  Research: "Researching",
+  Rocketry: "Rocketry",
+  Suits: "Suit Wearing",
+  Hauling: "Supplying",
+  Technicals: "Operating",
+  MedicalAid: "Doctoring",
+  Basekeeping: "Tidying",
+  Management: "Management",
+  BionicSkills: "Bionic Skills",
+};
 
 const HASH_TO_NAME = Object.fromEntries(
   MINION_SKILL_GROUP_NAMES.map((name) => [String(getSkillGroupHash(name)), name])
@@ -40,4 +71,20 @@ export function getSkillGroupNameByHash(hash) {
     return null;
   }
   return HASH_TO_NAME[String(hash)] || null;
+}
+
+export function getSkillGroupDisplayName(skillGroupId) {
+  if (typeof skillGroupId !== "string" || !skillGroupId.trim()) {
+    return "";
+  }
+  const normalized = skillGroupId.trim();
+  return MINION_SKILL_GROUP_DISPLAY_NAMES[normalized] || normalized;
+}
+
+export function getSkillGroupLabel(skillGroupId) {
+  const id = typeof skillGroupId === "string" ? skillGroupId.trim() : "";
+  if (!id) {
+    return "";
+  }
+  return `${getSkillGroupDisplayName(id)} (${id})`;
 }

@@ -8,8 +8,17 @@ import { useSaveSession } from "@/lib/save-session/save-session-context";
 import { selectDuplicantEditorModel, selectDuplicants } from "@/lib/oni/save-selectors";
 import { HAIR_OFFSET_BASES } from "@/lib/oni/hair-offsets";
 import { withBasePath } from "@/lib/asset-paths";
+import { getSkillGroupDisplayName } from "@/lib/oni/minion-interests";
+import {
+  OVERJOYED_TRAIT_IDS,
+  STRESS_REACTION_TRAIT_IDS,
+  getAllKnownTraits,
+  getTraitDisplayName,
+  getTraitDescription,
+  normalizeTraitId,
+  isBionicTraitId,
+} from "@/lib/oni/trait-names";
 
-const TRAIT_ID_PATTERN = /^[A-Za-z][A-Za-z0-9._-]*$/;
 const ATTRIBUTE_MIN_LEVEL = -20;
 const ATTRIBUTE_MAX_LEVEL = 99;
 const MAX_NAME_LENGTH = 64;
@@ -57,6 +66,7 @@ function DuplicantEditorPageContent() {
     hasSave,
     selectedDuplicantId,
     setSelectedDuplicantId,
+    modifyBehavior,
     updateDuplicantName,
     addDuplicantTrait,
     removeDuplicantTrait,
@@ -123,8 +133,7 @@ function DuplicantEditorPageContent() {
 
   const [nameDraft, setNameDraft] = useState("");
   const [nameError, setNameError] = useState("");
-  const [newTraitId, setNewTraitId] = useState("");
-  const [traitError, setTraitError] = useState("");
+  const [addTraitCategory, setAddTraitCategory] = useState("positive");
   const [interestToAdd, setInterestToAdd] = useState("");
   const [attributeDrafts, setAttributeDrafts] = useState({});
   const [attributeErrors, setAttributeErrors] = useState({});
@@ -138,13 +147,28 @@ function DuplicantEditorPageContent() {
   const [newEffectCycles, setNewEffectCycles] = useState("5");
   const [newEffectError, setNewEffectError] = useState("");
   const [hairOffsets, setHairOffsets] = useState({});
+  const [reactionModal, setReactionModal] = useState(null);
+  const [isReactionModalVisible, setIsReactionModalVisible] = useState(false);
   const carouselRef = useRef(null);
   const cardRefs = useRef({});
   const [carouselPad, setCarouselPad] = useState(0);
   const carouselDragRef = useRef(null);
   const suppressCarouselClickRef = useRef(false);
+  const reactionModalCloseTimerRef = useRef(null);
+  const reactionModalRafRef = useRef(null);
 
   const CAROUSEL_DRAG_THRESHOLD = 6;
+
+  useEffect(() => {
+    return () => {
+      if (reactionModalCloseTimerRef.current) {
+        clearTimeout(reactionModalCloseTimerRef.current);
+      }
+      if (reactionModalRafRef.current) {
+        cancelAnimationFrame(reactionModalRafRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -176,15 +200,18 @@ function DuplicantEditorPageContent() {
     if (!card) {
       return;
     }
-    const containerRect = container.getBoundingClientRect();
-    const cardRect = card.getBoundingClientRect();
-    const currentLeft = container.scrollLeft;
-    const targetLeft =
-      currentLeft +
-      (cardRect.left - containerRect.left) -
-      (containerRect.width / 2 - cardRect.width / 2);
-    container.scrollTo({ left: targetLeft, behavior: "smooth" });
-  }, [model?.id]);
+    const raf = window.requestAnimationFrame(() => {
+      const containerRect = container.getBoundingClientRect();
+      const cardRect = card.getBoundingClientRect();
+      const currentLeft = container.scrollLeft;
+      const targetLeft =
+        currentLeft +
+        (cardRect.left - containerRect.left) -
+        (containerRect.width / 2 - cardRect.width / 2);
+      container.scrollTo({ left: targetLeft, behavior: "smooth" });
+    });
+    return () => window.cancelAnimationFrame(raf);
+  }, [model?.id, carouselPad]);
 
   useEffect(() => {
     const container = carouselRef.current;
@@ -337,6 +364,148 @@ function DuplicantEditorPageContent() {
     }
   }, []);
 
+  const overjoyedReactions = useMemo(() => {
+    if (!model?.traits?.length) {
+      return [];
+    }
+    return model.traits.filter((traitId) =>
+      OVERJOYED_TRAIT_IDS.has(normalizeTraitId(traitId))
+    );
+  }, [model?.traits]);
+
+  const stressReactions = useMemo(() => {
+    if (!model?.traits?.length) {
+      return [];
+    }
+    return model.traits.filter((traitId) =>
+      STRESS_REACTION_TRAIT_IDS.has(normalizeTraitId(traitId))
+    );
+  }, [model?.traits]);
+
+  const nonReactionTraits = useMemo(() => {
+    if (!model?.traits?.length) {
+      return [];
+    }
+    return model.traits.filter((traitId) => {
+      const normalized = normalizeTraitId(traitId);
+      return (
+        normalized &&
+        !OVERJOYED_TRAIT_IDS.has(normalized) &&
+        !STRESS_REACTION_TRAIT_IDS.has(normalized)
+      );
+    });
+  }, [model?.traits]);
+
+  const eligibleOverjoyedTraits = useMemo(() => {
+    return [...OVERJOYED_TRAIT_IDS]
+      .filter((traitId) => !isBionicTraitId(traitId))
+      .map((traitId) => {
+        const description = getTraitDescription(traitId);
+        const normalizedDescription = description.trim();
+        const withOverjoyedSuffix = normalizedDescription
+          ? /Overjoyed\.$/i.test(normalizedDescription)
+            ? normalizedDescription
+            : `${normalizedDescription} Overjoyed.`
+          : "";
+        return {
+          id: traitId,
+          name: getTraitDisplayName(traitId),
+          description: withOverjoyedSuffix,
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, []);
+
+  const eligibleStressTraits = useMemo(() => {
+    return [...STRESS_REACTION_TRAIT_IDS]
+      .filter((traitId) => !isBionicTraitId(traitId))
+      .map((traitId) => ({
+        id: traitId,
+        name: getTraitDisplayName(traitId),
+        description: getTraitDescription(traitId),
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, []);
+
+  const addableTraits = useMemo(() => {
+    const ownedTraitIds = new Set((model?.traits || []).map(normalizeTraitId));
+    return getAllKnownTraits()
+      .filter((trait) => !isBionicTraitId(trait.id))
+      .filter((trait) => trait.category === addTraitCategory)
+      .map((trait) => ({
+        ...trait,
+        isOwned: ownedTraitIds.has(trait.id),
+      }));
+  }, [addTraitCategory, model?.traits]);
+
+  const selectedOverjoyedId = useMemo(
+    () => normalizeTraitId(overjoyedReactions[0]),
+    [overjoyedReactions]
+  );
+  const selectedStressId = useMemo(
+    () => normalizeTraitId(stressReactions[0]),
+    [stressReactions]
+  );
+
+  const applyReactionTrait = useCallback(
+    (kind, traitId) => {
+      if (!model?.id || typeof traitId !== "string") {
+        return;
+      }
+      const normalizedSelected = normalizeTraitId(traitId);
+      const reactionSet =
+        kind === "overjoyed" ? OVERJOYED_TRAIT_IDS : STRESS_REACTION_TRAIT_IDS;
+      if (!reactionSet.has(normalizedSelected)) {
+        return;
+      }
+      const currentTraits = Array.isArray(model?.traits) ? model.traits : [];
+      const filteredTraits = currentTraits.filter(
+        (current) => !reactionSet.has(normalizeTraitId(current))
+      );
+      const nextTraitIds = [...filteredTraits, normalizedSelected];
+      modifyBehavior(model.id, "Klei.AI.Traits", "templateData", { TraitIds: nextTraitIds });
+      setIsReactionModalVisible(false);
+      reactionModalCloseTimerRef.current = setTimeout(() => {
+        setReactionModal(null);
+      }, 120);
+    },
+    [model?.id, model?.traits, modifyBehavior]
+  );
+
+  const openReactionModal = useCallback((kind) => {
+    if (reactionModalCloseTimerRef.current) {
+      clearTimeout(reactionModalCloseTimerRef.current);
+      reactionModalCloseTimerRef.current = null;
+    }
+    if (reactionModalRafRef.current) {
+      cancelAnimationFrame(reactionModalRafRef.current);
+      reactionModalRafRef.current = null;
+    }
+    setReactionModal(kind);
+    if (kind === "add-traits") {
+      setAddTraitCategory("positive");
+    }
+    setIsReactionModalVisible(false);
+    reactionModalRafRef.current = requestAnimationFrame(() => {
+      setIsReactionModalVisible(true);
+      reactionModalRafRef.current = null;
+    });
+  }, []);
+
+  const closeReactionModal = useCallback(() => {
+    if (!reactionModal) {
+      return;
+    }
+    if (reactionModalCloseTimerRef.current) {
+      clearTimeout(reactionModalCloseTimerRef.current);
+    }
+    setIsReactionModalVisible(false);
+    reactionModalCloseTimerRef.current = setTimeout(() => {
+      setReactionModal(null);
+      reactionModalCloseTimerRef.current = null;
+    }, 120);
+  }, [reactionModal]);
+
   if (!hasSave) {
     return (
       <SaveRequiredPage
@@ -384,25 +553,6 @@ function DuplicantEditorPageContent() {
       </section>
     );
   }
-
-  const onAddTrait = () => {
-    const value = newTraitId.trim();
-    if (!value) {
-      setTraitError("Trait ID is required.");
-      return;
-    }
-    if (!TRAIT_ID_PATTERN.test(value)) {
-      setTraitError("Trait ID must start with a letter and use letters, numbers, ., _, -.");
-      return;
-    }
-    if (model.traits.includes(value)) {
-      setTraitError("Trait already exists on this duplicant.");
-      return;
-    }
-    addDuplicantTrait(model.id, value);
-    setNewTraitId("");
-    setTraitError("");
-  };
 
   const onApplyName = () => {
     const nextName = nameDraft.trim();
@@ -703,11 +853,47 @@ function DuplicantEditorPageContent() {
 
       <div className="rounded-xl border border-white/20 p-4">
         <h2 className="text-lg font-semibold">Traits</h2>
+        <div className="mt-3 flex flex-wrap items-center gap-6 text-sm">
+          <div className="flex items-center gap-2">
+            <span className="opacity-70">Overjoyed Reactions:</span>
+            <button
+              type="button"
+              onClick={() => openReactionModal("overjoyed")}
+              className="rounded-md bg-[var(--accent)] px-3 py-1.5 text-sm font-semibold text-[#000000] hover:brightness-110"
+            >
+              {overjoyedReactions.length === 0
+                ? "None"
+                : overjoyedReactions.map(getTraitDisplayName).join(", ")}
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="opacity-70">Stress Reactions:</span>
+            <button
+              type="button"
+              onClick={() => openReactionModal("stress")}
+              className="rounded-md bg-[var(--accent)] px-3 py-1.5 text-sm font-semibold text-[#000000] hover:brightness-110"
+            >
+              {stressReactions.length === 0
+                ? "None"
+                : stressReactions.map(getTraitDisplayName).join(", ")}
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="opacity-70">Traits:</span>
+            <button
+              type="button"
+              onClick={() => openReactionModal("add-traits")}
+              className="rounded-md bg-[var(--accent)] px-3 py-1.5 text-sm font-semibold text-[#000000] hover:brightness-110"
+            >
+              Add Traits
+            </button>
+          </div>
+        </div>
         <div className="mt-3 flex flex-wrap gap-2">
-          {model.traits.length === 0 ? (
+          {nonReactionTraits.length === 0 ? (
             <span className="text-sm opacity-70">No traits</span>
           ) : (
-            model.traits.map((trait) => (
+            nonReactionTraits.map((trait) => (
               <button
                 key={trait}
                 type="button"
@@ -715,29 +901,147 @@ function DuplicantEditorPageContent() {
                 className="rounded-md border border-white/25 px-2 py-1 text-xs hover:bg-white/10"
                 title="Remove trait"
               >
-                {trait} x
+                {getTraitDisplayName(trait)} x
               </button>
             ))
           )}
         </div>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <input
-            type="text"
-            value={newTraitId}
-            onChange={(event) => setNewTraitId(event.target.value)}
-            placeholder="Trait ID (e.g. FastLearner)"
-            className="min-w-[260px] rounded-md border border-white/25 bg-black px-3 py-2 text-sm"
-          />
-          <button
-            type="button"
-            onClick={onAddTrait}
-            className="rounded-md border border-white/25 px-3 py-2 text-sm font-semibold hover:bg-white/10"
-          >
-            Add Trait
-          </button>
-        </div>
-        {traitError ? <p className="mt-2 text-xs text-red-300">{traitError}</p> : null}
       </div>
+
+      {reactionModal ? (
+        <div
+          className={`fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 transition-opacity duration-150 ${
+            isReactionModalVisible ? "opacity-100" : "opacity-0"
+          }`}
+          onClick={closeReactionModal}
+        >
+          <div
+            className={`m3-surface-raised flex max-h-[85vh] w-full max-w-lg flex-col p-5 transition duration-150 ${
+              isReactionModalVisible
+                ? "translate-y-0 scale-100 opacity-100"
+                : "translate-y-1 scale-[0.99] opacity-0"
+            }`}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-xl font-semibold">
+                {reactionModal === "overjoyed"
+                  ? "Overjoyed Reactions"
+                  : reactionModal === "stress"
+                    ? "Stress Reactions"
+                    : "Add Traits"}
+              </h3>
+              <button
+                type="button"
+                onClick={closeReactionModal}
+                className="m3-button m3-button-outlined px-3 py-1 text-sm"
+              >
+                Close
+              </button>
+            </div>
+            {reactionModal === "add-traits" ? (
+              <div className="mt-4 grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setAddTraitCategory("positive")}
+                  className={`rounded-md px-3 py-2 text-sm font-semibold text-[#000000] ${
+                    addTraitCategory === "positive"
+                      ? "bg-[#7f56c5]"
+                      : "bg-[var(--accent)] hover:bg-[#a98add]"
+                  }`}
+                >
+                  Positive
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAddTraitCategory("universal")}
+                  className={`rounded-md px-3 py-2 text-sm font-semibold text-[#000000] ${
+                    addTraitCategory === "universal"
+                      ? "bg-[#7f56c5]"
+                      : "bg-[var(--accent)] hover:bg-[#a98add]"
+                  }`}
+                >
+                  Universal
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAddTraitCategory("negative")}
+                  className={`rounded-md px-3 py-2 text-sm font-semibold text-[#000000] ${
+                    addTraitCategory === "negative"
+                      ? "bg-[#7f56c5]"
+                      : "bg-[var(--accent)] hover:bg-[#a98add]"
+                  }`}
+                >
+                  Negative
+                </button>
+              </div>
+            ) : null}
+            <div className="mt-4 min-h-0 flex-1 overflow-y-auto pr-1 touch-pan-y">
+              <div className="flex flex-col gap-2">
+                {(reactionModal === "overjoyed"
+                  ? eligibleOverjoyedTraits
+                  : reactionModal === "stress"
+                    ? eligibleStressTraits
+                    : addableTraits
+                ).map((trait) => {
+                  if (reactionModal === "add-traits") {
+                    return (
+                      <button
+                        key={trait.id}
+                        type="button"
+                        onClick={() => addDuplicantTrait(model.id, trait.id)}
+                        disabled={trait.isOwned}
+                        className={`w-full rounded-md border px-4 py-2.5 text-left text-[#000000] transition ${
+                          trait.isOwned
+                            ? "cursor-not-allowed border-[#5f3f98] bg-[#7f56c5] opacity-60"
+                            : "border-transparent bg-[var(--accent)] hover:bg-[#a98add]"
+                        }`}
+                      >
+                        <span className="flex items-center justify-between gap-2 text-sm font-semibold">
+                          <span>{trait.name}</span>
+                          {trait.isOwned ? <span className="text-xs font-bold">Owned</span> : null}
+                        </span>
+                        {trait.description ? (
+                          <span className="mt-1 block text-xs italic text-black/80">
+                            {trait.description}
+                          </span>
+                        ) : null}
+                      </button>
+                    );
+                  }
+                  const normalizedTraitId = normalizeTraitId(trait.id);
+                  const isSelected =
+                    (reactionModal === "overjoyed" ? selectedOverjoyedId : selectedStressId) ===
+                    normalizedTraitId;
+                  return (
+                    <button
+                      key={trait.id}
+                      type="button"
+                      disabled={isSelected}
+                      onClick={() => applyReactionTrait(reactionModal, trait.id)}
+                      className={`w-full rounded-md border px-4 py-2.5 text-left text-[#000000] transition disabled:opacity-100 ${
+                        isSelected
+                          ? "cursor-not-allowed border-transparent bg-[#7f56c5]"
+                          : "border-transparent bg-[var(--accent)] hover:bg-[#a98add]"
+                      }`}
+                    >
+                      <span className="flex items-center justify-between gap-2 text-sm font-semibold">
+                        <span>{trait.name}</span>
+                        {isSelected ? <span className="text-xs font-bold">Current</span> : null}
+                      </span>
+                      {trait.description ? (
+                        <span className="mt-1 block text-xs italic text-black/80">
+                          {trait.description}
+                        </span>
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <div className="rounded-xl border border-white/20 p-4">
         <h2 className="text-lg font-semibold">Interests</h2>
@@ -753,7 +1057,7 @@ function DuplicantEditorPageContent() {
                 className="rounded-md border border-white/25 px-2 py-1 text-xs hover:bg-white/10"
                 title="Remove interest"
               >
-                {interest} x
+                {getSkillGroupDisplayName(interest)} x
               </button>
             ))
           )}
@@ -767,17 +1071,17 @@ function DuplicantEditorPageContent() {
 
         {model.availableInterests.length > 0 ? (
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <select
-              value={interestToAdd}
-              onChange={(event) => setInterestToAdd(event.target.value)}
-              className="rounded-md border border-white/25 bg-black px-3 py-2 text-sm"
-            >
-              {model.availableInterests.map((interest) => (
-                <option key={interest} value={interest}>
-                  {interest}
-                </option>
-              ))}
-            </select>
+              <select
+                value={interestToAdd}
+                onChange={(event) => setInterestToAdd(event.target.value)}
+                className="rounded-md border border-white/25 bg-black px-3 py-2 text-sm"
+              >
+                {model.availableInterests.map((interest) => (
+                  <option key={interest} value={interest}>
+                    {getSkillGroupDisplayName(interest)}
+                  </option>
+                ))}
+              </select>
             <button
               type="button"
               onClick={() => {

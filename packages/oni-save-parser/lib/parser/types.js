@@ -1,9 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.isMetaInstruction = void 0;
+exports.isMetaInstruction = isMetaInstruction;
 const util_1 = require("util");
 function isMetaInstruction(inst) {
-    return util_1.isObject(inst) && !!inst.isMeta;
+    return (0, util_1.isObject)(inst) && !!inst.isMeta;
 }
-exports.isMetaInstruction = isMetaInstruction;
 //# sourceMappingURL=types.js.map

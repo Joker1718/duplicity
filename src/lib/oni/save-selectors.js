@@ -5,7 +5,8 @@ import {
   MINION_SKILL_NAMES,
 } from "@/lib/oni/oni-constants";
 import {
-  MINION_SKILL_GROUP_NAMES,
+  DUPLICANT_INTEREST_NAMES,
+  getSkillGroupDisplayName,
   getHashedStringHash,
   getSkillGroupNameByHash,
 } from "@/lib/oni/minion-interests";
@@ -506,7 +507,17 @@ export function selectDuplicantEditorModel(saveGame, duplicantId) {
     }
   }
 
-  const selectedInterests = [...selectedInterestSet].sort();
+  const compareInterestsByDisplayName = (a, b) => {
+    const aName = getSkillGroupDisplayName(a);
+    const bName = getSkillGroupDisplayName(b);
+    const byName = aName.localeCompare(bName);
+    if (byName !== 0) {
+      return byName;
+    }
+    return a.localeCompare(b);
+  };
+
+  const selectedInterests = [...selectedInterestSet].sort(compareInterestsByDisplayName);
   const unknownInterestHashes = [...unknownInterestSet];
   const selectedSet = new Set(selectedInterests);
 
@@ -515,7 +526,9 @@ export function selectDuplicantEditorModel(saveGame, duplicantId) {
     name: summary.name,
     traits: summary.traits,
     interests: selectedInterests,
-    availableInterests: MINION_SKILL_GROUP_NAMES.filter((name) => !selectedSet.has(name)),
+    availableInterests: DUPLICANT_INTEREST_NAMES
+      .filter((name) => !selectedSet.has(name))
+      .sort(compareInterestsByDisplayName),
     unknownInterestHashes,
     attributes: DUPLICANT_ATTRIBUTE_ORDER.map((attributeId) => ({
       attributeId,

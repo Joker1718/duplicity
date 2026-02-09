@@ -54,17 +54,28 @@ code {
 
 select,
 input,
-textarea,
-button {
-  color: var(--foreground);
-}
-
-select,
-input,
 textarea {
+  color: var(--foreground);
   background-color: var(--surface-container);
   border-color: var(--border);
   border-radius: 0.75rem;
+}
+
+button {
+  color: #000000;
+  background: var(--accent);
+  border: 1px solid transparent;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  transition: background-color 120ms ease, border-color 120ms ease, opacity 120ms ease;
+}
+
+button:hover {
+  background: #966fd6;
+}
+
+button:disabled {
+  opacity: 0.5;
 }
 
 select option {
@@ -118,33 +129,28 @@ select option {
 }
 
 .m3-button {
-  border-radius: 999px;
+  border-radius: 0.75rem;
   font-weight: 600;
-  transition: background-color 120ms ease, border-color 120ms ease, opacity 120ms ease;
-}
-
-.m3-button:disabled {
-  opacity: 0.5;
 }
 
 .m3-button-tonal {
   background: var(--accent);
-  color: #0f0a17;
+  color: #000000;
+  border-color: transparent;
 }
 
 .m3-button-tonal:hover {
-  background: color-mix(in srgb, var(--accent) 88%, white 12%);
+  background: #966fd6;
 }
 
 .m3-button-outlined {
-  border: 1px solid var(--outline);
-  color: var(--foreground);
-  background: transparent;
+  background: var(--accent);
+  color: #000000;
+  border-color: transparent;
 }
 
 .m3-button-outlined:hover {
-  background: var(--state-hover);
-  border-color: var(--outline-strong);
+  background: #966fd6;
 }
 
 .m3-field {

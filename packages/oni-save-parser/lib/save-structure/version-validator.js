@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.E_VERSION_MINOR = exports.E_VERSION_MAJOR = exports.validateVersion = exports.CURRENT_VERSION_MINOR = exports.CURRENT_VERSION_MAJOR = void 0;
+exports.E_VERSION_MINOR = exports.E_VERSION_MAJOR = exports.CURRENT_VERSION_MINOR = exports.CURRENT_VERSION_MAJOR = void 0;
+exports.validateVersion = validateVersion;
 exports.CURRENT_VERSION_MAJOR = 7;
 exports.CURRENT_VERSION_MINOR = [31];
 function validateVersion(major, minor, strictness = "minor") {
@@ -12,7 +13,6 @@ function validateVersion(major, minor, strictness = "minor") {
         throw err;
     }
 }
-exports.validateVersion = validateVersion;
 function matchVersion(currentVersion, supportedVersion) {
     if (Array.isArray(supportedVersion)) {
         return supportedVersion.indexOf(currentVersion) !== -1;

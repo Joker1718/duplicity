@@ -5,5 +5,5 @@ var DLCIds;
 (function (DLCIds) {
     DLCIds["None"] = "";
     DLCIds["SpacedOut"] = "EXPANSION1_ID";
-})(DLCIds = exports.DLCIds || (exports.DLCIds = {}));
+})(DLCIds || (exports.DLCIds = DLCIds = {}));
 //# sourceMappingURL=dlc.js.map

@@ -274,6 +274,25 @@ function deepClone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function mergeDeep(target, source) {
+  if (!isPlainObject(target) || !isPlainObject(source)) {
+    return deepClone(source);
+  }
+  const output = { ...target };
+  for (const [key, value] of Object.entries(source)) {
+    if (isPlainObject(value) && isPlainObject(output[key])) {
+      output[key] = mergeDeep(output[key], value);
+    } else {
+      output[key] = deepClone(value);
+    }
+  }
+  return output;
+}
+
 function getBehaviorCandidates(behaviorName) {
   if (typeof behaviorName !== "string" || behaviorName.length === 0) {
     return [];
@@ -425,6 +444,37 @@ function moveGameObjectToGroup(saveGame, location, nextObject, targetGroupName) 
   };
 }
 
+function updateSaveGameRoot(saveGame, updater) {
+  if (!saveGame || !Array.isArray(saveGame.gameObjects)) {
+    return saveGame;
+  }
+  const groups = saveGame.gameObjects;
+  const index = groups.findIndex((group) => group?.name === "SaveGame");
+  if (index === -1) {
+    return saveGame;
+  }
+  const targetGroup = groups[index];
+  const objects = Array.isArray(targetGroup?.gameObjects) ? targetGroup.gameObjects : [];
+  if (objects.length === 0) {
+    return saveGame;
+  }
+  const nextRoot = updater(objects[0]);
+  if (!nextRoot || nextRoot === objects[0]) {
+    return saveGame;
+  }
+  const nextGroup = {
+    ...targetGroup,
+    gameObjects: [nextRoot, ...objects.slice(1)],
+  };
+  const nextGroups = groups.map((group, groupIndex) =>
+    groupIndex === index ? nextGroup : group
+  );
+  return {
+    ...saveGame,
+    gameObjects: nextGroups,
+  };
+}
+
 function updateBehaviorTemplate(gameObject, behaviorName, updater) {
   if (!Array.isArray(gameObject?.behaviors)) {
     return gameObject;
@@ -455,6 +505,28 @@ function updateBehaviorTemplateAny(gameObject, behaviorNames, updater) {
     }
   }
   return gameObject;
+}
+
+function updateBehaviorExtra(gameObject, behaviorName, updater) {
+  if (!Array.isArray(gameObject?.behaviors)) {
+    return gameObject;
+  }
+  let changed = false;
+  const nextBehaviors = gameObject.behaviors.map((behavior) => {
+    if (behavior?.name !== behaviorName) {
+      return behavior;
+    }
+    const nextExtra = updater(behavior.extraData);
+    if (nextExtra === behavior.extraData) {
+      return behavior;
+    }
+    changed = true;
+    return {
+      ...behavior,
+      extraData: nextExtra,
+    };
+  });
+  return changed ? { ...gameObject, behaviors: nextBehaviors } : gameObject;
 }
 
 function updateBehaviorData(gameObject, behaviorName, behaviorData) {
@@ -1699,6 +1771,127 @@ export function SaveSessionProvider({ children }) {
     [setSaveGame, state.saveGame]
   );
 
+  const modifyBehavior = useCallback(
+    (gameObjectId, behaviorName, target, value, merge = false) => {
+      if (!state.saveGame || !Number.isFinite(gameObjectId)) {
+        return;
+      }
+      const targetKey = target === "extraData" ? "extraData" : "templateData";
+      const candidates = getBehaviorCandidates(behaviorName);
+      if (candidates.length === 0) {
+        return;
+      }
+      const next = mutateGameObjectById(state.saveGame, gameObjectId, (gameObject) => {
+        let nextObject = gameObject;
+        for (const name of candidates) {
+          const updated =
+            targetKey === "extraData"
+              ? updateBehaviorExtra(nextObject, name, (original) => {
+                  if (!merge) {
+                    if (!isPlainObject(original) || !isPlainObject(value)) {
+                      return value;
+                    }
+                    return { ...original, ...value };
+                  }
+                  return mergeDeep(
+                    isPlainObject(original) ? original : {},
+                    isPlainObject(value) ? value : {}
+                  );
+                })
+              : updateBehaviorTemplate(nextObject, name, (original) => {
+                  if (!merge) {
+                    if (!isPlainObject(original) || !isPlainObject(value)) {
+                      return value;
+                    }
+                    return { ...original, ...value };
+                  }
+                  return mergeDeep(
+                    isPlainObject(original) ? original : {},
+                    isPlainObject(value) ? value : {}
+                  );
+                });
+          if (updated !== nextObject) {
+            nextObject = updated;
+            break;
+          }
+        }
+        return nextObject;
+      });
+      setSaveGame(next, { isModified: next !== state.saveGame });
+    },
+    [setSaveGame, state.saveGame]
+  );
+
+  const updatePlanet = useCallback(
+    (planetId, patch) => {
+      if (!state.saveGame || !Number.isFinite(planetId) || !patch || typeof patch !== "object") {
+        return;
+      }
+      const next = updateSaveGameRoot(state.saveGame, (gameObject) =>
+        updateBehaviorTemplate(gameObject, "SpacecraftManager", (template) => {
+          if (!template || typeof template !== "object") {
+            return template;
+          }
+          const destinations = Array.isArray(template.destinations) ? template.destinations : [];
+          const index = destinations.findIndex((entry) => entry?.id === planetId);
+          if (index < 0) {
+            return template;
+          }
+          const nextDestinations = destinations.map((entry, entryIndex) => {
+            if (entryIndex !== index) {
+              return entry;
+            }
+            return { ...entry, ...patch };
+          });
+          return {
+            ...template,
+            destinations: nextDestinations,
+          };
+        })
+      );
+      setSaveGame(next, { isModified: next !== state.saveGame });
+    },
+    [setSaveGame, state.saveGame]
+  );
+
+  const deleteLooseMaterial = useCallback(
+    async (materialType) => {
+      if (!state.saveGame || !Array.isArray(state.saveGame.gameObjects)) {
+        return;
+      }
+      let materialsToRemove = [];
+      if (materialType) {
+        materialsToRemove = [String(materialType)];
+      } else {
+        try {
+          const module = await import("@clonata/oni-save-parser");
+          materialsToRemove = Array.isArray(module.SimHashNames)
+            ? module.SimHashNames.map(String)
+            : [];
+        } catch {
+          materialsToRemove = [];
+        }
+      }
+      if (materialsToRemove.length === 0) {
+        return;
+      }
+      const removeSet = new Set(materialsToRemove);
+      const nextGroups = state.saveGame.gameObjects.filter((group) => {
+        const groupName = group?.name;
+        if (!groupName) {
+          return true;
+        }
+        return !removeSet.has(groupName);
+      });
+      const next = {
+        ...state.saveGame,
+        gameObjects: nextGroups,
+      };
+      setSaveGame(next, { isModified: next !== state.saveGame });
+    },
+    [setSaveGame, state.saveGame]
+  );
+
   const value = useMemo(() => {
     const hasSave = Boolean(state.saveGame);
     const isBusy = state.status === "loading" || state.status === "saving";
@@ -1749,6 +1942,9 @@ export function SaveSessionProvider({ children }) {
       updateGeyserType,
       updateGeyserParameter,
       updateRawValue,
+      modifyBehavior,
+      updatePlanet,
+      deleteLooseMaterial,
     };
   }, [
     addDuplicantEffect,
@@ -1788,6 +1984,9 @@ export function SaveSessionProvider({ children }) {
     updateGeyserParameter,
     updateGeyserType,
     updateRawValue,
+    modifyBehavior,
+    updatePlanet,
+    deleteLooseMaterial,
   ]);
 
   return (

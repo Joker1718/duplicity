@@ -29,6 +29,8 @@ const SAVE_REQUIRED_PATH_PREFIXES = [
   "/planets",
   "/materials",
 ];
+const UI_VERSION_LABEL = "v4.0.2";
+const SAVED_STATUS_DURATION_MS = 3000;
 
 function normalizePathname(pathname) {
   if (!pathname || pathname === "/") {
@@ -271,6 +273,8 @@ export default function AppShell({ children }) {
   const pageTitle = useMemo(() => getPageTitle(pathname, t), [pathname, t]);
   const fileInputRef = useRef(null);
   const [showBackupPrompt, setShowBackupPrompt] = useState(false);
+  const [showSavedState, setShowSavedState] = useState(false);
+  const savedStatusTimeoutRef = useRef(null);
   const {
     status,
     error,
@@ -366,6 +370,16 @@ export default function AppShell({ children }) {
 
   useEffect(() => {
     const previousStatus = previousStatusRef.current;
+    if (previousStatus === "saving" && status === "ready" && hasSave) {
+      setShowSavedState(true);
+      if (savedStatusTimeoutRef.current) {
+        clearTimeout(savedStatusTimeoutRef.current);
+      }
+      savedStatusTimeoutRef.current = setTimeout(() => {
+        setShowSavedState(false);
+        savedStatusTimeoutRef.current = null;
+      }, SAVED_STATUS_DURATION_MS);
+    }
     if (
       previousStatus === "loading" &&
       status === "ready" &&
@@ -374,7 +388,56 @@ export default function AppShell({ children }) {
       router.replace("/");
     }
     previousStatusRef.current = status;
-  }, [normalizedPathname, router, status]);
+  }, [hasSave, normalizedPathname, router, status]);
+
+  useEffect(() => {
+    if (!isModified) {
+      return;
+    }
+    setShowSavedState(false);
+    if (savedStatusTimeoutRef.current) {
+      clearTimeout(savedStatusTimeoutRef.current);
+      savedStatusTimeoutRef.current = null;
+    }
+  }, [isModified]);
+
+  useEffect(
+    () => () => {
+      if (savedStatusTimeoutRef.current) {
+        clearTimeout(savedStatusTimeoutRef.current);
+      }
+    },
+    []
+  );
+
+  const saveFileStatus = useMemo(() => {
+    if (!hasSave) {
+      return {
+        label: t("app.save-file.not-loaded", { fallback: "Not Loaded" }),
+        chipClass: "border-white/20 bg-white/5",
+        valueClass: "",
+      };
+    }
+    if (isModified) {
+      return {
+        label: t("save-file.conditions.modified", { fallback: "Modified" }),
+        chipClass: "border-[var(--outline-strong)] bg-[var(--state-hover)]",
+        valueClass: "font-bold text-[var(--accent)]",
+      };
+    }
+    if (showSavedState) {
+      return {
+        label: t("app.save-file.saved", { fallback: "Saved" }),
+        chipClass: "border-emerald-300/45 bg-emerald-500/12",
+        valueClass: "font-bold text-[var(--success)]",
+      };
+    }
+    return {
+      label: t("app.save-file.clean", { fallback: "Clean" }),
+      chipClass: "border-emerald-300/45 bg-emerald-500/12",
+      valueClass: "text-[var(--success)]",
+    };
+  }, [hasSave, isModified, showSavedState, t]);
 
   return (
     <div className="h-dvh overflow-hidden bg-background text-foreground">
@@ -399,7 +462,7 @@ export default function AppShell({ children }) {
       />
       <div className="mx-auto flex h-full w-full max-w-[1432px] flex-col p-3">
         <div className="flex min-h-0 flex-1 gap-4">
-          <aside className="m3-surface hidden h-full w-64 overflow-y-auto p-4 md:block">
+          <aside className="m3-surface hidden h-full w-64 overflow-y-auto p-4 md:flex md:flex-col">
             <h1 className="text-lg font-semibold">Duplicity</h1>
             <p className="mt-2 text-xs uppercase tracking-wide opacity-70">
               {t("app.status-label", { fallback: "Status" })}: {statusText}
@@ -439,6 +502,9 @@ export default function AppShell({ children }) {
                 );
               })}
             </nav>
+            <p className="mt-auto pt-5 text-center text-[10px] tracking-wide opacity-55">
+              {UI_VERSION_LABEL}
+            </p>
           </aside>
 
           <div className="m3-surface flex min-h-0 w-full flex-col overflow-hidden md:max-w-[1136px]">
@@ -549,27 +615,10 @@ export default function AppShell({ children }) {
             </span>
             <span className="mx-auto text-center">Rewritten by cLonata with ♥</span>
             <span
-              className={`m3-chip px-2 py-1 ${
-                isModified
-                  ? "border-[var(--outline-strong)] bg-[var(--state-hover)]"
-                  : "border-emerald-300/45 bg-emerald-500/12 text-[var(--success)]"
-              }`}
+              className={`m3-chip px-2 py-1 ${saveFileStatus.chipClass}`}
             >
-              {hasSave ? (
-                <>
-                  <span>{t("app.save-file.label", { fallback: "Save File" })}: </span>
-                  <span
-                    className={isModified ? "font-bold" : ""}
-                    style={isModified ? { color: "var(--accent)" } : undefined}
-                  >
-                    {isModified
-                      ? t("save-file.conditions.modified", { fallback: "Modified" })
-                      : t("app.save-file.clean", { fallback: "Clean" })}
-                  </span>
-                </>
-              ) : (
-                t("app.save-file.not-loaded", { fallback: "Save File: Not Loaded" })
-              )}
+              <span>{t("app.save-file.label", { fallback: "Save File" })}: </span>
+              <span className={saveFileStatus.valueClass}>{saveFileStatus.label}</span>
             </span>
           </div>
         </footer>

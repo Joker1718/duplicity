@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import SaveRequiredPage from "@/components/save-required-page";
 import { useSaveSession } from "@/lib/save-session/save-session-context";
 import { selectDuplicantEditorModel, selectDuplicants } from "@/lib/oni/save-selectors";
@@ -17,6 +17,8 @@ const HEALTH_MIN = 0;
 const ACCESSORY_BASE_PATH = "/images/oni";
 const PREVIEW_SIZE = 32;
 const CARD_SIZE = 32;
+const CARD_CONTENT_SCALE = 0.65;
+const CARD_CONTENT_OFFSET_Y = 25;
 const CARD_SCALE_RATIO = CARD_SIZE / PREVIEW_SIZE;
 
 function formatAccessoryOrdinal(ordinal) {
@@ -127,6 +129,10 @@ function DuplicantEditorPageContent() {
   const [newEffectCycles, setNewEffectCycles] = useState("5");
   const [newEffectError, setNewEffectError] = useState("");
   const [hairOffsets, setHairOffsets] = useState({});
+  const carouselRef = useRef(null);
+  const cardRefs = useRef({});
+  const [carouselPad, setCarouselPad] = useState(0);
+  const carouselDragRef = useRef(null);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -147,6 +153,91 @@ function DuplicantEditorPageContent() {
     } catch (_error) {
       setHairOffsets({});
     }
+  }, []);
+
+  useEffect(() => {
+    const container = carouselRef.current;
+    if (!container || !model?.id) {
+      return;
+    }
+    const card = cardRefs.current[model.id];
+    if (!card) {
+      return;
+    }
+    const containerRect = container.getBoundingClientRect();
+    const cardRect = card.getBoundingClientRect();
+    const currentLeft = container.scrollLeft;
+    const targetLeft =
+      currentLeft +
+      (cardRect.left - containerRect.left) -
+      (containerRect.width / 2 - cardRect.width / 2);
+    container.scrollTo({ left: targetLeft, behavior: "smooth" });
+  }, [model?.id]);
+
+  useEffect(() => {
+    const container = carouselRef.current;
+    if (!container) {
+      return;
+    }
+    const computePad = () => {
+      const containerRect = container.getBoundingClientRect();
+      const sampleCard =
+        cardRefs.current[model?.id] ||
+        cardRefs.current[duplicants[0]?.id];
+      if (!sampleCard) {
+        return;
+      }
+      const cardRect = sampleCard.getBoundingClientRect();
+      const pad = Math.max(0, (containerRect.width - cardRect.width) / 2);
+      setCarouselPad(pad);
+    };
+
+    computePad();
+    const observer = new ResizeObserver(() => computePad());
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [duplicants, model?.id]);
+
+  const scrollCarouselBy = useCallback((direction) => {
+    const container = carouselRef.current;
+    if (!container) {
+      return;
+    }
+    const delta = container.clientWidth * 0.8 * direction;
+    container.scrollBy({ left: delta, behavior: "smooth" });
+  }, []);
+
+  const onCarouselPointerDown = useCallback((event) => {
+    const container = carouselRef.current;
+    if (!container) {
+      return;
+    }
+    carouselDragRef.current = {
+      startX: event.clientX,
+      startScrollLeft: container.scrollLeft,
+      pointerId: event.pointerId,
+    };
+    container.setPointerCapture?.(event.pointerId);
+  }, []);
+
+  const onCarouselPointerMove = useCallback((event) => {
+    const container = carouselRef.current;
+    const drag = carouselDragRef.current;
+    if (!container || !drag) {
+      return;
+    }
+    const deltaX = event.clientX - drag.startX;
+    container.scrollLeft = drag.startScrollLeft - deltaX;
+  }, []);
+
+  const endCarouselDrag = useCallback((event) => {
+    const container = carouselRef.current;
+    const drag = carouselDragRef.current;
+    if (!container || !drag) {
+      return;
+    }
+    container.releasePointerCapture?.(drag.pointerId);
+    carouselDragRef.current = null;
   }, []);
 
   useEffect(() => {
@@ -194,16 +285,14 @@ function DuplicantEditorPageContent() {
     setNewEffectError("");
   }, [model?.effects, model?.availableEffects, model?.id]);
 
-  const genderOptions = useMemo(() => {
-    const options = ["MALE", "FEMALE"];
-    if (model?.gender && !options.includes(model.gender)) {
-      options.push(model.gender);
-    }
-    if (model?.genderStringKey && !options.includes(model.genderStringKey)) {
-      options.push(model.genderStringKey);
-    }
-    return options;
-  }, [model?.gender, model?.genderStringKey]);
+  const genderOptions = useMemo(
+    () => [
+      { value: "FEMALE", label: "Female" },
+      { value: "MALE", label: "Male" },
+      { value: "NB", label: "Non-binary" },
+    ],
+    []
+  );
 
   if (!hasSave) {
     return (
@@ -396,52 +485,119 @@ function DuplicantEditorPageContent() {
   const rawScale =
     (Number.isFinite(baseOffset.scale) ? baseOffset.scale : 1) *
     (Number.isFinite(hairOffset?.scale) ? hairOffset.scale : 1);
-  const hairOffsetX = rawOffsetX * CARD_SCALE_RATIO;
-  const hairOffsetY = rawOffsetY * CARD_SCALE_RATIO;
-  const hairScale = 1 + (rawScale - 1) * CARD_SCALE_RATIO;
+  const hairOffsetX = rawOffsetX * CARD_SCALE_RATIO * CARD_CONTENT_SCALE;
+  const hairOffsetY =
+    rawOffsetY * CARD_SCALE_RATIO * CARD_CONTENT_SCALE + CARD_CONTENT_OFFSET_Y;
+  const hairScale =
+    CARD_CONTENT_SCALE * (1 + (rawScale - 1) * CARD_SCALE_RATIO);
 
   return (
     <section className="space-y-4">
       <header className="rounded-xl border border-white/20 p-4">
-        <div className="flex flex-wrap items-start gap-4">
-          <div className="flex items-center gap-3">
-            <div className="relative h-32 w-32 rounded-md border border-white/15 bg-black/30">
-              <img
-                src={getAccessorySrc("head", headshapeOrdinal)}
-                alt={`Headshape ${headshapeOrdinal}`}
-                className="absolute inset-0 h-full w-full object-contain"
-                loading="lazy"
-              />
-              <img
-                src={getAccessorySrc("hair", hairOrdinal)}
-                alt={`Hair ${hairOrdinal}`}
-                className="absolute inset-0 h-full w-full object-contain"
-                style={{
-                  transform: `translate(${hairOffsetX}px, ${hairOffsetY}px) scale(${hairScale})`,
-                  transformOrigin: "50% 50%",
-                }}
-                loading="lazy"
-              />
-            </div>
-            <div className="text-xs opacity-70">
-              Headshape {headshapeOrdinal} · Hair {hairOrdinal}
-            </div>
-          </div>
-          <div className="min-w-[220px] flex-1">
-            <label className="text-xs font-semibold uppercase tracking-wide opacity-70">
-              Duplicant
-            </label>
-            <select
-              value={model.id}
-              onChange={(event) => onSelectDuplicant(Number(event.target.value))}
-              className="mt-1 w-full rounded-md border border-white/25 bg-black px-3 py-2 text-sm sm:max-w-sm"
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => scrollCarouselBy(-1)}
+              className="m3-button m3-button-outlined px-2 py-1 text-xs"
+              aria-label="Scroll left"
             >
-              {duplicants.map((duplicant) => (
-                <option key={duplicant.id} value={duplicant.id}>
-                  {duplicant.name} ({duplicant.id})
-                </option>
-              ))}
-            </select>
+              ◀
+            </button>
+            <div
+              ref={carouselRef}
+              className="no-scrollbar flex flex-1 snap-x snap-mandatory items-center gap-3 overflow-x-auto pb-2 cursor-grab select-none active:cursor-grabbing"
+              style={{ paddingLeft: carouselPad, paddingRight: carouselPad }}
+              onPointerDown={onCarouselPointerDown}
+              onPointerMove={onCarouselPointerMove}
+              onPointerUp={endCarouselDrag}
+              onPointerLeave={endCarouselDrag}
+              onPointerCancel={endCarouselDrag}
+            >
+            {duplicants.map((duplicant) => {
+              const isSelected = duplicant.id === model.id;
+              const appearance = duplicant.appearance || {};
+              const dupHead = appearance.headOrdinal ?? 1;
+              const dupHair = appearance.hairOrdinal ?? 1;
+              const dupHairOffset =
+                hairOffsets?.[String(dupHair)] ?? hairOffsets?.[dupHair];
+              const dupBaseOffset = HAIR_OFFSET_BASES[dupHair] || {};
+              const dupRawOffsetX =
+                (Number.isFinite(dupBaseOffset.x) ? dupBaseOffset.x : 0) +
+                (Number.isFinite(dupHairOffset?.x) ? dupHairOffset.x : 0);
+              const dupRawOffsetY =
+                (Number.isFinite(dupBaseOffset.y) ? dupBaseOffset.y : 0) +
+                (Number.isFinite(dupHairOffset?.y) ? dupHairOffset.y : 0);
+              const dupRawScale =
+                (Number.isFinite(dupBaseOffset.scale) ? dupBaseOffset.scale : 1) *
+                (Number.isFinite(dupHairOffset?.scale) ? dupHairOffset.scale : 1);
+              const dupHairOffsetX =
+                dupRawOffsetX * CARD_SCALE_RATIO * CARD_CONTENT_SCALE;
+              const dupHairOffsetY =
+                dupRawOffsetY * CARD_SCALE_RATIO * CARD_CONTENT_SCALE +
+                CARD_CONTENT_OFFSET_Y;
+              const dupHairScale =
+                CARD_CONTENT_SCALE * (1 + (dupRawScale - 1) * CARD_SCALE_RATIO);
+
+              const imageToneClass = isSelected
+                ? ""
+                : "grayscale group-hover:grayscale-0";
+
+              return (
+                <button
+                  key={duplicant.id}
+                  type="button"
+                  onClick={() => onSelectDuplicant(duplicant.id)}
+                  ref={(node) => {
+                    if (node) {
+                      cardRefs.current[duplicant.id] = node;
+                    }
+                  }}
+                  className={`group flex min-w-[140px] snap-center flex-col items-center gap-2 rounded-lg border px-3 py-3 text-left transition ${
+                    isSelected
+                      ? "border-white/40 bg-white/5"
+                      : "border-white/15 hover:bg-white/5"
+                  }`}
+                >
+                  <div className="relative h-32 w-32 overflow-hidden rounded-md border border-white/15 bg-black/30">
+                    <img
+                      src={getAccessorySrc("head", dupHead)}
+                      alt={`Headshape ${dupHead}`}
+                      className={`absolute inset-0 h-full w-full object-contain ${imageToneClass}`}
+                      style={{
+                        transform: `translateY(${CARD_CONTENT_OFFSET_Y}px) scale(${CARD_CONTENT_SCALE})`,
+                        transformOrigin: "50% 50%",
+                      }}
+                      draggable={false}
+                      loading="lazy"
+                    />
+                    <img
+                      src={getAccessorySrc("hair", dupHair)}
+                      alt={`Hair ${dupHair}`}
+                      className={`absolute inset-0 h-full w-full object-contain ${imageToneClass}`}
+                      style={{
+                        transform: `translate(${dupHairOffsetX}px, ${dupHairOffsetY}px) scale(${dupHairScale})`,
+                        transformOrigin: "50% 50%",
+                      }}
+                      draggable={false}
+                      loading="lazy"
+                    />
+                  </div>
+                  <div className="text-xs opacity-80">
+                    {duplicant.name} ({duplicant.id})
+                  </div>
+                </button>
+              );
+            })}
+            </div>
+            <button
+              type="button"
+              onClick={() => scrollCarouselBy(1)}
+              className="m3-button m3-button-outlined px-2 py-1 text-xs"
+              aria-label="Scroll right"
+            >
+              ▶
+            </button>
           </div>
         </div>
       </header>
@@ -473,25 +629,16 @@ function DuplicantEditorPageContent() {
           <label className="flex flex-col gap-1 text-sm">
             <span className="opacity-80">Gender</span>
             <select
-              value={model.gender || ""}
+              value={model.gender || "FEMALE"}
               onChange={(event) => updateDuplicantGender(model.id, event.target.value)}
               className="rounded-md border border-white/25 bg-black px-3 py-2 text-sm"
             >
-              {genderOptions.map((gender) => (
-                <option key={gender} value={gender}>
-                  {gender}
+              {genderOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
                 </option>
               ))}
             </select>
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="opacity-80">Gender String Key</span>
-            <input
-              type="text"
-              value={model.genderStringKey || ""}
-              readOnly
-              className="rounded-md border border-white/15 bg-black/40 px-3 py-2 text-sm opacity-80"
-            />
           </label>
         </div>
       </div>

@@ -11,6 +11,8 @@ import { HAIR_OFFSET_BASES } from "@/lib/oni/hair-offsets";
 const ACCESSORY_BASE_PATH = "/images/oni";
 const PREVIEW_SIZE = 32;
 const CARD_SIZE = 32;
+const CARD_CONTENT_SCALE = 0.65;
+const CARD_CONTENT_OFFSET_Y = 25;
 const CARD_SCALE_RATIO = CARD_SIZE / PREVIEW_SIZE;
 
 function formatAccessoryOrdinal(ordinal) {
@@ -37,9 +39,9 @@ function DuplicantCard({ duplicant, onSelect, hairOffsets }) {
   const rawScale =
     (Number.isFinite(baseOffset.scale) ? baseOffset.scale : 1) *
     (Number.isFinite(hairOffset?.scale) ? hairOffset.scale : 1);
-  const hairOffsetX = rawOffsetX * CARD_SCALE_RATIO;
-  const hairOffsetY = rawOffsetY * CARD_SCALE_RATIO;
-  const hairScale = 1 + (rawScale - 1) * CARD_SCALE_RATIO;
+  const hairOffsetX = rawOffsetX * CARD_SCALE_RATIO * CARD_CONTENT_SCALE;
+  const hairOffsetY = rawOffsetY * CARD_SCALE_RATIO * CARD_CONTENT_SCALE + CARD_CONTENT_OFFSET_Y;
+  const hairScale = CARD_CONTENT_SCALE * (1 + (rawScale - 1) * CARD_SCALE_RATIO);
 
   return (
     <article className="w-full rounded-lg border border-black/10 p-4 dark:border-white/15">
@@ -57,13 +59,17 @@ function DuplicantCard({ duplicant, onSelect, hairOffsets }) {
         </Link>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-4 border-t border-black/10 pt-3 dark:border-white/15">
-        <div className="flex items-center gap-3">
-          <div className="relative h-32 w-32 rounded-md border border-white/15 bg-black/30">
+      <div className="mt-3 border-t border-black/10 pt-3 dark:border-white/15">
+        <div className="flex flex-col items-center gap-2">
+          <div className="relative h-40 w-40 overflow-hidden rounded-md border border-white/15 bg-black/30">
             <img
               src={getAccessorySrc("head", headshapeOrdinal)}
               alt={`Headshape ${headshapeOrdinal}`}
               className="absolute inset-0 h-full w-full object-contain"
+              style={{
+                transform: `translateY(${CARD_CONTENT_OFFSET_Y}px) scale(${CARD_CONTENT_SCALE})`,
+                transformOrigin: "50% 50%",
+              }}
               loading="lazy"
             />
             <img

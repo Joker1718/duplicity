@@ -7,8 +7,9 @@ import DuplicantActionsPanel from "@/components/duplicant-actions-panel";
 import { useSaveSession } from "@/lib/save-session/save-session-context";
 import { selectDuplicants } from "@/lib/oni/save-selectors";
 import { HAIR_OFFSET_BASES } from "@/lib/oni/hair-offsets";
+import { withBasePath } from "@/lib/asset-paths";
 
-const ACCESSORY_BASE_PATH = "/images/oni";
+const ACCESSORY_BASE_PATH = withBasePath("/images/oni");
 const PREVIEW_SIZE = 32;
 const CARD_SIZE = 32;
 const CARD_CONTENT_SCALE = 0.65;

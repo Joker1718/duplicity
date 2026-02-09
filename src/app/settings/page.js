@@ -5,6 +5,7 @@ import { useI18n } from "@/lib/i18n/i18n-context";
 import { useSaveSession } from "@/lib/save-session/save-session-context";
 import { probeSaveGame } from "@/lib/oni/save-probe";
 import { HAIR_OFFSET_BASES } from "@/lib/oni/hair-offsets";
+import { withBasePath } from "@/lib/asset-paths";
 
 export default function SettingsPage() {
   const { locale, setLocale, languages, supportedLocales, t } = useI18n();
@@ -427,23 +428,23 @@ export default function SettingsPage() {
                 <span className="text-xs uppercase tracking-wide opacity-70">Preview</span>
                 <div className="relative h-32 w-32 rounded-md border border-white/10 bg-[var(--foreground)]">
                   <img
-                    src="/images/oni/head/head_1.png"
+                    src={withBasePath("/images/oni/head/head_1.png")}
                     alt="Head base"
                     className="absolute inset-0 h-full w-full object-contain"
                     draggable="false"
                   />
-                <img
-                  src={`/images/oni/hair/hair_${previewHairId}.png`}
-                  alt={`Hair ${previewHairId}`}
-                  className="absolute inset-0 h-full w-full cursor-move object-contain"
-                  style={{
+                  <img
+                    src={withBasePath(`/images/oni/hair/hair_${previewHairId}.png`)}
+                    alt={`Hair ${previewHairId}`}
+                    className="absolute inset-0 h-full w-full cursor-move object-contain"
+                    style={{
                       transform: `translate(${previewOffset.x}px, ${previewOffset.y}px) scale(${previewOffset.scale})`,
                       transformOrigin: "50% 50%",
-                  }}
-                  onPointerDown={onHairDragStart}
-                  onPointerMove={onHairDragMove}
-                  onPointerUp={onHairDragEnd}
-                  onPointerCancel={onHairDragEnd}
+                    }}
+                    onPointerDown={onHairDragStart}
+                    onPointerMove={onHairDragMove}
+                    onPointerUp={onHairDragEnd}
+                    onPointerCancel={onHairDragEnd}
                     draggable="false"
                   />
                 </div>

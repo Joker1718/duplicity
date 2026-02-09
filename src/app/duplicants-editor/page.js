@@ -7,6 +7,7 @@ import SaveRequiredPage from "@/components/save-required-page";
 import { useSaveSession } from "@/lib/save-session/save-session-context";
 import { selectDuplicantEditorModel, selectDuplicants } from "@/lib/oni/save-selectors";
 import { HAIR_OFFSET_BASES } from "@/lib/oni/hair-offsets";
+import { withBasePath } from "@/lib/asset-paths";
 
 const TRAIT_ID_PATTERN = /^[A-Za-z][A-Za-z0-9._-]*$/;
 const ATTRIBUTE_MIN_LEVEL = -20;
@@ -14,7 +15,7 @@ const ATTRIBUTE_MAX_LEVEL = 99;
 const MAX_NAME_LENGTH = 64;
 const EXPERIENCE_MIN = 0;
 const HEALTH_MIN = 0;
-const ACCESSORY_BASE_PATH = "/images/oni";
+const ACCESSORY_BASE_PATH = withBasePath("/images/oni");
 const PREVIEW_SIZE = 32;
 const CARD_SIZE = 32;
 const CARD_CONTENT_SCALE = 0.65;

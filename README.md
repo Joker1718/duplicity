@@ -19,6 +19,7 @@ A web-based Oxygen Not Included save file editor.
 
 - **macOS**: `~/Library/Application Support/unity.Klei.Oxygen Not Included/save_files/`
 - **Windows**: `C:\Users\<Your Username>\Documents\Klei\OxygenNotIncluded\save_files\`
+- **Linux**: `~/.config/unity3d/Klei/Oxygen Not Included/save_files/`
 
 ---
 
@@ -33,13 +34,23 @@ To address these issues, **V4 is a full rewrite** from the ground up using moder
 - ✅ **Next.js** — Simplified routing and easy static site generation for GitHub Pages support.
 - ✅ **React** — Component-driven UI, no Redux or global state complexity.
 - ✅ **Tailwind CSS** — Fast and responsive styling with utility classes.
-- ✅ **No TypeScript** — Now using plain JavaScript to lower the barrier for contribution.
+- ✅ **JavaScript-first app layer** — The web app UI is plain JavaScript to keep contribution lightweight, while the parser workspace remains TypeScript.
 - ✅ **Client-side only** — All functionality runs in the browser. No backend, no data upload, no privacy concerns.
 
 This approach improves maintainability, performance, and makes it easier to add features going forward.
 
 > 🔧 **Note**: This project is a modern fork of the original and popular [`oni-duplicity`](https://github.com/RoboPhred/oni-duplicity) by **RoboPhred**.  
 > The new version is rewritten and maintained by **[cLonata](https://github.com/cLonata)**.
+
+---
+
+## Current Save Workflow
+
+- Loads `.sav` files only.
+- Parses/writes fully in-browser (no backend upload).
+- Supports in-place save on browsers that expose `showOpenFilePicker` / `showSaveFilePicker`.
+- Shows a backup prompt before overwrite when saving in place.
+- Uses parser strictness controls (`major`, `minor`, `none`) in Settings.
 
 ---
 
@@ -58,8 +69,22 @@ Add your translated copies under `src/translations/<lang>/` and open a PR.
 
 ## Implementation
 
-The actual save file serialization and parsing is powered by the excellent [oni-save-parser](https://github.com/RoboPhred/oni-save-parser) library.  
-Feel free to use it in your own projects as well!
+Save file serialization/parsing is powered by [`@clonata/oni-save-parser`](packages/oni-save-parser), maintained in this repo as a workspace package.
 
 By default, Duplicity uses `major` version strictness when parsing saves.
 This keeps support best-effort for newer minor save versions within the same major format.
+
+---
+
+## Development
+
+Requirements:
+- Node.js `22.x`
+- npm `11.x`
+
+---
+
+## Deployment
+
+- GitHub Pages deploys automatically from `master` via `.github/workflows/pages.yml`.
+- Next.js is exported statically (`output: "export"`), with `basePath`/`assetPrefix` set in CI.

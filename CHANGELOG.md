@@ -1,6 +1,6 @@
 ## 4.0.2
 
-Patch release focused on Raw Editor usability and shared UI consistency.
+Patch release focused on usability polish, Raw Editor scalability, and shared UI standardization.
 
 ### Raw Editor
 - Replaced legacy tree markers with consistent chevron icons and muted leaf markers.
@@ -8,11 +8,31 @@ Patch release focused on Raw Editor usability and shared UI consistency.
 - Added lazy loading for object children in batches of 50 as you scroll.
 - Added lazy loading for primitive fields in batches of 50 as you scroll.
 - Replaced hard "Showing first ..." caps with progressive "Loaded X of Y" indicators.
+- Standardized tree/breadcrumb controls with neutral ghost-button styling to avoid global button bleed.
 
-### Shared UI
+### Save Overview / Difficulty
+- Home header now shows `Duplicity V4` when no save is loaded and `Save Overview` when a save is loaded.
+- Removed duplicate in-card headings (`Save Overview` and `Difficulty`) from the overview content block.
+- Reordered overview toggles so they appear below `Bionic Wattage` and `Demolior Impact`.
+- Reworked toggle rows into right-aligned checkbox fields (`Label [checkbox]`) with uniform `m3-field` styling.
+- Hard-baked Title Case display labels/values in difficulty mappings (removed runtime casing transform).
+
+### App Shell / Save Flow
+- Added bottom-center left-nav version stamp (`v4.0.2`).
+- Expanded Save File status chip states to `Not Loaded`, `Clean`, `Modified`, and transient `Saved`.
+- Upgraded load/save progress modal to display real parser-worker progress messages.
+- Added percentage parsing where available and determinate progress bar fallback logic.
+- Replaced static progress pulse bar with determinate/indeterminate progress animation behavior.
+
+### Shared UI Components
 - Added reusable `m3-button-ghost` for neutral controls in dense/editor contexts.
 - Added reusable circular icon button and standardized chevron controls where applied.
+- Added reusable `m3-toggle-field` for standardized right-aligned toggle rows.
 - Updated dropdown behavior to use adaptive scrolling (no scrollbar for short lists, thin scrollbar for long lists).
+
+### Changelog Page
+- Improved markdown hierarchy and spacing so version headers are clearly distinct from subsection headers.
+- Styled the legacy divider marker (`Older changelog entries start below.`) for stronger visual separation.
 
 ## 4.0.1
 

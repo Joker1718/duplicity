@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { useSaveSession } from "@/lib/save-session/save-session-context";
 import M3Select from "@/components/ui/m3-select";
+import M3ToggleField from "@/components/ui/m3-toggle-field";
 import {
   getDifficultySettingLabel,
   getDifficultyValueLabel,
@@ -14,6 +15,12 @@ const SAVE_PATHS = {
   mac: "~/Library/Application Support/unity.Klei.Oxygen Not Included/save_files/",
   linux: "~/.config/unity3d/Klei/Oxygen Not Included/save_files/",
 };
+const TOGGLE_SETTING_NAMES = new Set([
+  "CarePackages",
+  "SandboxMode",
+  "FastWorkersMode",
+  "Teleporters",
+]);
 
 function formatBytes(bytes) {
   if (!Number.isFinite(bytes) || bytes < 0) {
@@ -124,6 +131,11 @@ function ReadyState({
     Array.isArray(difficultyOrder) && difficultyOrder.length > 0
       ? difficultyOrder
       : Object.keys(difficultyOptions);
+  const displaySettingOrder = useMemo(() => {
+    const nonToggle = settingOrder.filter((name) => !TOGGLE_SETTING_NAMES.has(name));
+    const toggle = settingOrder.filter((name) => TOGGLE_SETTING_NAMES.has(name));
+    return [...nonToggle, ...toggle];
+  }, [settingOrder]);
 
   const isToggleOptions = (options) =>
     Array.isArray(options) &&
@@ -133,40 +145,31 @@ function ReadyState({
 
   return (
     <section className="rounded-xl border border-black/10 p-5 dark:border-white/15">
-      <h3 className="text-xl font-semibold">Save Overview</h3>
       <div className="mt-4 rounded-md border border-black/10 p-3 dark:border-white/15">
-        <h4 className="text-sm font-semibold uppercase tracking-wide opacity-80">
-          Difficulty
-        </h4>
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
-          {settingOrder.map((settingName) => {
+          {displaySettingOrder.map((settingName) => {
             const options = difficultyOptions[settingName] || [];
             const selected = difficulty[settingName] ?? options[0] ?? "";
             const label = getDifficultySettingLabel(settingName);
+            if (isToggleOptions(options)) {
+              return (
+                <M3ToggleField
+                  key={settingName}
+                  label={label}
+                  checked={selected === "Enabled"}
+                  onChange={(event) =>
+                    onUpdateDifficulty(
+                      settingName,
+                      event.target.checked ? "Enabled" : "Disabled"
+                    )
+                  }
+                />
+              );
+            }
             return (
               <label key={settingName} className="flex flex-col gap-1 text-sm">
                 <span className="opacity-80">{label}</span>
-                {isToggleOptions(options) ? (
-                  <label className="flex items-center gap-2 rounded-md border border-white/15 bg-black/40 px-3 py-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={selected === "Enabled"}
-                      onChange={(event) =>
-                        onUpdateDifficulty(
-                          settingName,
-                          event.target.checked ? "Enabled" : "Disabled"
-                        )
-                      }
-                      className="h-4 w-4 accent-[var(--accent)]"
-                    />
-                    <span>
-                      {getDifficultyValueLabel(
-                        settingName,
-                        selected === "Enabled" ? "Enabled" : "Disabled"
-                      )}
-                    </span>
-                  </label>
-                ) : options.length > 0 ? (
+                {options.length > 0 ? (
                   <M3Select
                     value={selected}
                     onChange={(event) =>

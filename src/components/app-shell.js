@@ -39,11 +39,11 @@ function normalizePathname(pathname) {
   return pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
 }
 
-function getPageTitle(pathname, t) {
+function getPageTitle(pathname, t, hasSave) {
   const normalizedPathname = normalizePathname(pathname);
 
   if (normalizedPathname === "/") {
-    return t("app.page-title.home", { fallback: "Duplicity V4" });
+    return hasSave ? "Save Overview" : t("app.page-title.home", { fallback: "Duplicity V4" });
   }
   if (normalizedPathname.startsWith("/duplicants-editor")) {
     return t("app.page-title.duplicant-editor", { fallback: "Duplicant Editor" });
@@ -346,7 +346,6 @@ export default function AppShell({ children }) {
   const { t } = useI18n();
   const normalizedPathname = useMemo(() => normalizePathname(pathname), [pathname]);
   const isDuplicantEditor = normalizedPathname.startsWith("/duplicants-editor");
-  const pageTitle = useMemo(() => getPageTitle(pathname, t), [pathname, t]);
   const fileInputRef = useRef(null);
   const [showBackupPrompt, setShowBackupPrompt] = useState(false);
   const [showSavedState, setShowSavedState] = useState(false);
@@ -375,6 +374,7 @@ export default function AppShell({ children }) {
     fileName,
   } = useSaveSession();
   const previousStatusRef = useRef(status);
+  const pageTitle = useMemo(() => getPageTitle(pathname, t, hasSave), [hasSave, pathname, t]);
 
   const dlcIds = useMemo(() => readDlcIds(saveGame), [saveGame]);
   const dlcNames = useMemo(() => dlcIds.map(getDlcDisplayName), [dlcIds]);

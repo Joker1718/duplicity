@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useMemo, useRef, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { useSaveSession } from "@/lib/save-session/save-session-context";
 
@@ -15,6 +15,17 @@ const NAV_ITEMS = [
   { href: "/materials", i18nKey: "material.noun_titlecase_plural", fallback: "Materials", saveRequired: true, implemented: false },
   { href: "/raw", i18nKey: "raw-editor-page.title", fallback: "Raw Editor", saveRequired: true },
   { href: "/changelog", i18nKey: "changelog.title", fallback: "Changelog", saveRequired: false },
+];
+
+const SAVE_REQUIRED_PATH_PREFIXES = [
+  "/duplicants",
+  "/duplicants-editor",
+  "/creatures",
+  "/creatures-editor",
+  "/geysers",
+  "/raw",
+  "/planets",
+  "/materials",
 ];
 
 function normalizePathname(pathname) {
@@ -65,6 +76,15 @@ function isActive(pathname, href) {
     return pathname === "/";
   }
   return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function routeRequiresSave(pathname) {
+  return SAVE_REQUIRED_PATH_PREFIXES.some((prefix) => {
+    if (pathname === prefix) {
+      return true;
+    }
+    return pathname.startsWith(`${prefix}/`);
+  });
 }
 
 function readDlcIds(saveGame) {
@@ -241,6 +261,7 @@ function BackupPromptDialog({ open, onConfirm, onSkip, onCancel, t }) {
 }
 
 export default function AppShell({ children }) {
+  const router = useRouter();
   const pathname = usePathname();
   const { t } = useI18n();
   const normalizedPathname = useMemo(() => normalizePathname(pathname), [pathname]);
@@ -270,6 +291,7 @@ export default function AppShell({ children }) {
     confirmImportWarning,
     fileName,
   } = useSaveSession();
+  const previousStatusRef = useRef(status);
 
   const dlcIds = useMemo(() => readDlcIds(saveGame), [saveGame]);
   const dlcNames = useMemo(() => dlcIds.map(getDlcDisplayName), [dlcIds]);
@@ -330,6 +352,27 @@ export default function AppShell({ children }) {
     await loadSaveFile(file, { versionStrictness: parseStrictness });
     event.target.value = "";
   };
+
+  useEffect(() => {
+    if (isBusy) {
+      return;
+    }
+    if (!hasSave && routeRequiresSave(normalizedPathname)) {
+      router.replace("/");
+    }
+  }, [hasSave, isBusy, normalizedPathname, router]);
+
+  useEffect(() => {
+    const previousStatus = previousStatusRef.current;
+    if (
+      previousStatus === "loading" &&
+      status === "ready" &&
+      normalizedPathname !== "/"
+    ) {
+      router.replace("/");
+    }
+    previousStatusRef.current = status;
+  }, [normalizedPathname, router, status]);
 
   return (
     <div className="h-dvh overflow-hidden bg-background text-foreground">

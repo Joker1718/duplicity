@@ -84,9 +84,9 @@ function readDlcIds(saveGame) {
 function getDlcDisplayName(dlcId) {
   const names = {
     EXPANSION1_ID: "Spaced Out!",
-    DLC2_ID: "DLC 2",
-    DLC3_ID: "DLC 3",
-    DLC4_ID: "DLC 4",
+    DLC2_ID: "The Frosty Planet",
+    DLC3_ID: "The Bionic Booster",
+    DLC4_ID: "The Prehistoric Planet",
   };
   return names[dlcId] || dlcId;
 }

@@ -1,3 +1,12 @@
+## 4.0.1
+
+- Duplicant editor carousel now supports drag-to-slide with centered selection.
+- Non-selected carousel cards render in grayscale and restore on hover.
+- Carousel name labels truncate to prevent overflow.
+- Gender selection unified with `FEMALE/MALE/NB` mapping and F/M/X display.
+- Identity editor decluttered into a single row with Name, Gender, Appearance.
+- Hair/head avatars now use baked offsets with the offset tool for alignment.
+
 ## 4.0.0
 
 Major V4 rewrite focused on speed, safety, and a modern UI. This release brings V3 parity in a new architecture and unlocks GitHub Pages-first delivery.

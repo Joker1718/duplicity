@@ -1,3 +1,44 @@
+## 4.0.3
+
+Patch release focused on M3 consistency, reusable card UI, and major Duplicant Management polish.
+
+### Duplicant Management Cards
+- Traits now render with real in-game names from the known trait list and match editor styling.
+- Added `Overjoyed:` and `Stressed:` rows above traits, including reaction values per duplicant.
+- Added hover descriptions for both trait and reaction chips.
+- Fixed chip hover cursor behavior so traits/reactions/attributes stay non-text (`default`) on hover.
+- Reworked reactions and attributes rows to left-label/right-value alignment.
+- Corrected attribute handling to prioritize the canonical 12 gameplay attributes and reduce noisy extras.
+- Sorted attributes A-Z and rendered them in two-column book order (left column filled first, then right).
+- Made avatar area use a single larger container and resized in-card avatar rendering to `0.6`.
+
+### Duplicant Card Actions
+- Reworked action toggles to a stricter M3 approach using shared chips and `react-icons` states.
+- Standardized corner radius and text color across action chips for visual uniformity.
+- Added collapsible `Attributes` and `Actions` sections with expand/collapse animation.
+- Updated chevron behavior to `v` (expanded) and `^` (collapsed).
+- Set `Actions` collapsed by default.
+- Fixed unintended auto-expand of all action blocks when entering Duplicant Management after load.
+- Expanded copy buffer details to `Buffer: X behaviors from ...`.
+- Moved `Target: Name (ID)` up in the action block for clearer context.
+- Copying behaviors now expands action panels across cards to make follow-up actions immediately visible.
+
+### Shared M3 Components
+- Extracted reusable `m3-chips` and applied it across traits, reactions, attributes, and action selections.
+- Updated chip outlines to match the app pastel-purple accent.
+- Added reusable animated `m3-collapsible-section` for section-level hide/show behavior.
+
+### Data / Tooling / Docs
+- Updated bundled trait data coverage used by V4 trait resolution and display.
+- Added new developer tooling used during card/avatar and styling iteration.
+- Updated project README documentation.
+
+### App Shell / Navigation Drawer
+- Extracted the left nav into reusable `m3-navigation-drawer`.
+- Updated nav item states toward M3 drawer patterns (active/disabled/trailing metadata).
+- Added right-aligned live counts for `Duplicants`, `Creatures`, and `Geysers`.
+- Removed pill-style number containers and switched to plain trailing numbers to match M3 drawer guidance.
+
 ## 4.0.2
 
 Patch release focused on usability polish, Raw Editor scalability, and shared UI standardization.

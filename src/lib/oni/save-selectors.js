@@ -25,6 +25,53 @@ export const DUPLICANT_ATTRIBUTE_ORDER = [
   "Strength",
 ];
 
+const DUPLICANT_PILOTING_ATTRIBUTE_IDS = ["Piloting", "SpaceNavigation", "Rocketry"];
+
+const DUPLICANT_ATTRIBUTE_DISPLAY_NAMES = {
+  SpaceNavigation: "Piloting",
+  Piloting: "Piloting",
+  Rocketry: "Piloting",
+  Construction: "Construction",
+  Digging: "Excavation",
+  Machinery: "Machinery",
+  Athletics: "Athletics",
+  Learning: "Science",
+  Cooking: "Cuisine",
+  Caring: "Medicine",
+  Strength: "Strength",
+  Art: "Creativity",
+  Botanist: "Agriculture",
+  Ranching: "Husbandry",
+};
+
+function getAttributeDisplayName(attributeId) {
+  if (typeof attributeId !== "string" || !attributeId.trim()) {
+    return "";
+  }
+  return DUPLICANT_ATTRIBUTE_DISPLAY_NAMES[attributeId] || attributeId;
+}
+
+function getPilotingAttributeId(attributeMap) {
+  for (const attributeId of DUPLICANT_PILOTING_ATTRIBUTE_IDS) {
+    if (Object.prototype.hasOwnProperty.call(attributeMap, attributeId)) {
+      return attributeId;
+    }
+  }
+  return DUPLICANT_PILOTING_ATTRIBUTE_IDS[0];
+}
+
+function getOrderedDuplicantAttributeIds(attributeMap) {
+  return [...DUPLICANT_ATTRIBUTE_ORDER, getPilotingAttributeId(attributeMap)].sort((a, b) => {
+    const nameA = getAttributeDisplayName(a);
+    const nameB = getAttributeDisplayName(b);
+    const byName = nameA.localeCompare(nameB);
+    if (byName !== 0) {
+      return byName;
+    }
+    return a.localeCompare(b);
+  });
+}
+
 const DIFFICULTY_SETTING_ORDER = [
   "ImmuneSystem",
   "CalorieBurn",
@@ -434,8 +481,9 @@ export function selectDuplicants(saveGame) {
         ? traitsBehavior.templateData.TraitIds
         : [],
       appearance: readAccessoryOrdinals(accessorizerBehavior?.templateData?.accessories),
-      attributes: DUPLICANT_ATTRIBUTE_ORDER.map((attributeId) => ({
+      attributes: getOrderedDuplicantAttributeIds(attributeMap).map((attributeId) => ({
         attributeId,
+        displayName: getAttributeDisplayName(attributeId),
         levelLabel: levelWithSign(attributeMap[attributeId]),
       })),
     });
@@ -530,8 +578,9 @@ export function selectDuplicantEditorModel(saveGame, duplicantId) {
       .filter((name) => !selectedSet.has(name))
       .sort(compareInterestsByDisplayName),
     unknownInterestHashes,
-    attributes: DUPLICANT_ATTRIBUTE_ORDER.map((attributeId) => ({
+    attributes: getOrderedDuplicantAttributeIds(attributeMap).map((attributeId) => ({
       attributeId,
+      displayName: getAttributeDisplayName(attributeId),
       level: Number.isFinite(attributeMap[attributeId]) ? attributeMap[attributeId] : 0,
     })),
     gender: asString(identityBehavior?.templateData?.gender, "UNKNOWN"),

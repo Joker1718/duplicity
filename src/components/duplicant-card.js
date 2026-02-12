@@ -2,14 +2,23 @@
 
 import Link from "next/link";
 import DuplicantActionsPanel from "@/components/duplicant-actions-panel";
+import M3Chips from "@/components/ui/m3-chips";
+import M3CollapsibleSection from "@/components/ui/m3-collapsible-section";
 import { getSafeAccessoryOrdinal } from "@/lib/oni/accessory-constraints";
 import { withBasePath } from "@/lib/asset-paths";
 import { HAIR_OFFSET_BASES } from "@/lib/oni/hair-offsets";
+import {
+  OVERJOYED_TRAIT_IDS,
+  STRESS_REACTION_TRAIT_IDS,
+  getTraitDescription,
+  getTraitDisplayName,
+  normalizeTraitId,
+} from "@/lib/oni/trait-names";
 
 const ACCESSORY_BASE_PATH = withBasePath("/images/oni");
 const PREVIEW_SIZE = 32;
 const CARD_SIZE = 32;
-const CARD_CONTENT_SCALE = 0.65;
+const CARD_CONTENT_SCALE = 0.6;
 const CARD_CONTENT_OFFSET_Y = 25;
 const CARD_SCALE_RATIO = CARD_SIZE / PREVIEW_SIZE;
 
@@ -45,13 +54,51 @@ function getHairPreviewTransform(hairOrdinal, hairOffsets) {
   };
 }
 
-export default function DuplicantCard({ duplicant, onSelect, hairOffsets }) {
+function toTwoColumnBookOrder(items) {
+  const list = Array.isArray(items) ? items : [];
+  const leftColumnCount = Math.ceil(list.length / 2);
+  const ordered = [];
+
+  for (let index = 0; index < leftColumnCount; index += 1) {
+    ordered.push(list[index]);
+    const rightItem = list[index + leftColumnCount];
+    if (rightItem) {
+      ordered.push(rightItem);
+    }
+  }
+
+  return ordered;
+}
+
+export default function DuplicantCard({
+  duplicant,
+  onSelect,
+  hairOffsets,
+  actionsExpandSignal,
+  onBehaviorCopied,
+}) {
   const headshapeOrdinal = duplicant.appearance?.headOrdinal ?? 1;
   const hairOrdinal = duplicant.appearance?.hairOrdinal ?? 1;
+  const traitIds = Array.isArray(duplicant.traits) ? duplicant.traits : [];
+  const overjoyedReactions = traitIds.filter((traitId) =>
+    OVERJOYED_TRAIT_IDS.has(normalizeTraitId(traitId))
+  );
+  const stressReactions = traitIds.filter((traitId) =>
+    STRESS_REACTION_TRAIT_IDS.has(normalizeTraitId(traitId))
+  );
+  const nonReactionTraits = traitIds.filter((traitId) => {
+    const normalized = normalizeTraitId(traitId);
+    return (
+      normalized &&
+      !OVERJOYED_TRAIT_IDS.has(normalized) &&
+      !STRESS_REACTION_TRAIT_IDS.has(normalized)
+    );
+  });
   const { hairOffsetX, hairOffsetY, hairScale } = getHairPreviewTransform(
     hairOrdinal,
     hairOffsets
   );
+  const orderedAttributes = toTwoColumnBookOrder(duplicant.attributes);
 
   return (
     <article className="m3-surface-raised w-full rounded-[1.25rem] p-4 transition-colors hover:border-[var(--outline-strong)]">
@@ -69,65 +116,96 @@ export default function DuplicantCard({ duplicant, onSelect, hairOffsets }) {
         </Link>
       </div>
 
-      <div className="mt-4 rounded-2xl border border-[var(--outline)] bg-[var(--surface-container-high)] p-3">
-        <div className="flex flex-col items-center gap-2">
-          <div className="relative h-40 w-40 overflow-hidden rounded-2xl border border-[var(--outline)] bg-[var(--surface-container-highest)]">
-            <img
-              src={getAccessorySrc("head", headshapeOrdinal)}
-              alt={`Headshape ${headshapeOrdinal}`}
-              className="absolute inset-0 h-full w-full object-contain"
-              style={{
-                transform: `translateY(${CARD_CONTENT_OFFSET_Y}px) scale(${CARD_CONTENT_SCALE})`,
-                transformOrigin: "50% 50%",
-              }}
-              loading="lazy"
-            />
-            <img
-              src={getAccessorySrc("hair", hairOrdinal)}
-              alt={`Hair ${hairOrdinal}`}
-              className="absolute inset-0 h-full w-full object-contain"
-              style={{
-                transform: `translate(${hairOffsetX}px, ${hairOffsetY}px) scale(${hairScale})`,
-                transformOrigin: "50% 50%",
-              }}
-              loading="lazy"
-            />
-          </div>
-        </div>
+      <div className="relative mt-4 h-48 overflow-hidden rounded-2xl border border-[var(--outline)] bg-[var(--surface-container-high)]">
+        <img
+          src={getAccessorySrc("head", headshapeOrdinal)}
+          alt={`Headshape ${headshapeOrdinal}`}
+          className="absolute inset-0 h-full w-full object-contain"
+          style={{
+            transform: `translateY(${CARD_CONTENT_OFFSET_Y}px) scale(${CARD_CONTENT_SCALE})`,
+            transformOrigin: "50% 50%",
+          }}
+          loading="lazy"
+        />
+        <img
+          src={getAccessorySrc("hair", hairOrdinal)}
+          alt={`Hair ${hairOrdinal}`}
+          className="absolute inset-0 h-full w-full object-contain"
+          style={{
+            transform: `translate(${hairOffsetX}px, ${hairOffsetY}px) scale(${hairScale})`,
+            transformOrigin: "50% 50%",
+          }}
+          loading="lazy"
+        />
       </div>
 
       <section className="mt-3 rounded-2xl border border-[var(--outline)] bg-[var(--surface-container)] p-3">
-        <h3 className="text-xs font-semibold tracking-wide opacity-75">Traits</h3>
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {duplicant.traits.length === 0 ? (
-            <span className="text-xs opacity-60">No traits found</span>
-          ) : (
-            duplicant.traits.map((trait) => (
-              <span key={trait} className="m3-chip px-2.5 py-1 text-xs">
-                {trait}
-              </span>
-            ))
-          )}
+        <div className="flex flex-col gap-1 text-xs">
+          <p className="flex w-full flex-wrap items-start gap-1.5">
+            <span className="opacity-70">Overjoyed Reactions:</span>
+            <M3Chips
+              items={overjoyedReactions}
+              getItemKey={(trait) => `overjoyed-${trait}`}
+              getItemLabel={(trait) => getTraitDisplayName(trait)}
+              getItemTitle={(trait) => getTraitDescription(trait)}
+              className="ml-auto flex flex-1 flex-wrap justify-end gap-2 text-right font-medium"
+              emptyLabel="None"
+              emptyClassName="ml-auto text-right font-medium"
+            />
+          </p>
+          <p className="flex w-full flex-wrap items-start gap-1.5">
+            <span className="opacity-70">Stress Reactions:</span>
+            <M3Chips
+              items={stressReactions}
+              getItemKey={(trait) => `stress-${trait}`}
+              getItemLabel={(trait) => getTraitDisplayName(trait)}
+              getItemTitle={(trait) => getTraitDescription(trait)}
+              className="ml-auto flex flex-1 flex-wrap justify-end gap-2 text-right font-medium"
+              emptyLabel="None"
+              emptyClassName="ml-auto text-right font-medium"
+            />
+          </p>
         </div>
+        <h3 className="mt-3 text-xs font-semibold tracking-wide opacity-75">Traits</h3>
+        <M3Chips
+          items={nonReactionTraits}
+          getItemKey={(trait) => trait}
+          getItemLabel={(trait) => getTraitDisplayName(trait)}
+          getItemTitle={(trait) => getTraitDescription(trait)}
+          className="mt-2 flex flex-wrap gap-2"
+          emptyLabel="No traits found"
+          emptyClassName="mt-2 text-xs opacity-60"
+        />
       </section>
 
-      <section className="mt-3 rounded-2xl border border-[var(--outline)] bg-[var(--surface-container)] p-3">
-        <h3 className="text-xs font-semibold tracking-wide opacity-75">Attributes</h3>
-        <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
-          {duplicant.attributes.map((attribute) => (
-            <p
-              key={attribute.attributeId}
-              className="rounded-xl border border-[var(--outline)] bg-[var(--surface-container-high)] px-2 py-1.5"
-            >
-              <span className="opacity-75">{attribute.attributeId}</span>
-              <span className="ml-1.5 font-semibold">{attribute.levelLabel}</span>
-            </p>
-          ))}
-        </div>
-      </section>
+      <M3CollapsibleSection
+        title="Attributes"
+        defaultCollapsed={false}
+        containerClassName="mt-3 rounded-2xl border border-[var(--outline)] bg-[var(--surface-container)] p-3"
+      >
+        <M3Chips
+          items={orderedAttributes}
+          getItemKey={(attribute) => attribute.attributeId}
+          getItemLabel={(attribute) => (
+            <>
+              <span className="opacity-75">{attribute.displayName || attribute.attributeId}</span>
+              <span className="ml-auto text-right font-semibold">{attribute.levelLabel}</span>
+            </>
+          )}
+          className="grid grid-cols-2 gap-2 text-sm"
+          chipClassName="flex w-full items-center gap-2 bg-[var(--surface-container-high)] px-2 py-1.5 hover:bg-[var(--state-hover)]"
+          emptyLabel="No attributes found"
+          emptyClassName="text-xs opacity-60"
+        />
+      </M3CollapsibleSection>
 
       <div className="mt-3">
-        <DuplicantActionsPanel duplicantId={duplicant.id} duplicantName={duplicant.name} />
+        <DuplicantActionsPanel
+          duplicantId={duplicant.id}
+          duplicantName={duplicant.name}
+          expandSignal={actionsExpandSignal}
+          onCopied={onBehaviorCopied}
+        />
       </div>
     </article>
   );

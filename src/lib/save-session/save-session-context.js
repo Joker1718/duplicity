@@ -1413,6 +1413,11 @@ export function SaveSessionProvider({ children }) {
       if (!gameObject || !gameObjectType) {
         return;
       }
+      const identity = getBehavior(gameObject, "MinionIdentity");
+      const sourceName =
+        typeof identity?.templateData?.name === "string" && identity.templateData.name.trim()
+          ? identity.templateData.name.trim()
+          : `Duplicant ${duplicantId}`;
 
       const copyBehaviors = {};
       for (const requestedName of behaviorNames) {
@@ -1436,6 +1441,8 @@ export function SaveSessionProvider({ children }) {
 
       setCopyPasteData({
         gameObjectType,
+        sourceId: duplicantId,
+        sourceName,
         behaviors: copyBehaviors,
       });
     },

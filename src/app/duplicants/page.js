@@ -10,6 +10,7 @@ export default function DuplicantsPage() {
   const { saveGame, hasSave, setSelectedDuplicantId } = useSaveSession();
   const duplicants = useMemo(() => selectDuplicants(saveGame), [saveGame]);
   const [hairOffsets, setHairOffsets] = useState({});
+  const [actionsExpandSignal, setActionsExpandSignal] = useState(0);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -55,6 +56,10 @@ export default function DuplicantsPage() {
               duplicant={duplicant}
               onSelect={setSelectedDuplicantId}
               hairOffsets={hairOffsets}
+              actionsExpandSignal={actionsExpandSignal}
+              onBehaviorCopied={() =>
+                setActionsExpandSignal((previous) => previous + 1)
+              }
             />
           ))}
         </div>

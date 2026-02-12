@@ -1382,7 +1382,9 @@ function DuplicantEditorPageContent() {
               key={attribute.attributeId}
               className="flex items-center justify-between gap-3 rounded-md border border-white/10 px-3 py-2"
             >
-              <label className="text-sm opacity-80">{attribute.attributeId}</label>
+              <label className="text-sm opacity-80">
+                {attribute.displayName || attribute.attributeId}
+              </label>
               <div>
                 <input
                   type="number"

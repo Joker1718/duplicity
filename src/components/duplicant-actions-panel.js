@@ -44,17 +44,17 @@ export default function DuplicantActionsPanel({ duplicantId, duplicantName }) {
   };
 
   return (
-    <section className="rounded-lg border border-white/20 p-3">
-      <h3 className="text-sm font-semibold uppercase tracking-wide opacity-80">Actions</h3>
+    <section className="rounded-2xl border border-[var(--outline)] bg-[var(--surface-container)] p-3">
+      <h3 className="text-sm font-semibold tracking-wide opacity-85">Actions</h3>
       <p className="mt-1 text-xs opacity-70">
         Copy buffer: {copiedCount} behavior{copiedCount === 1 ? "" : "s"}
       </p>
 
-      <div className="mt-3 grid gap-1 sm:grid-cols-2" id={listId}>
+      <div className="mt-3 grid gap-1.5 sm:grid-cols-2" id={listId}>
         {DUPLICANT_EXPORTABLE_BEHAVIORS.map((entry) => (
           <label
             key={entry.behavior}
-            className="flex items-center gap-2 rounded border border-white/10 px-2 py-1 text-xs"
+            className="m3-chip flex items-center gap-2 px-2.5 py-1.5 text-xs"
           >
             <input
               type="checkbox"
@@ -72,7 +72,7 @@ export default function DuplicantActionsPanel({ duplicantId, duplicantName }) {
           type="button"
           onClick={() => copyDuplicantBehaviors(duplicantId, selectedNames)}
           disabled={selectedNames.length === 0}
-          className="rounded-md border border-white/25 px-2 py-1 text-xs font-semibold hover:bg-white/10 disabled:opacity-50"
+          className="m3-button m3-button-ghost border border-[var(--outline)] px-3 py-1.5 text-xs font-semibold hover:border-[var(--outline-strong)] disabled:opacity-50"
         >
           Copy
         </button>
@@ -80,7 +80,7 @@ export default function DuplicantActionsPanel({ duplicantId, duplicantName }) {
           type="button"
           onClick={() => pasteDuplicantBehaviors(duplicantId, selectedNames)}
           disabled={selectedNames.length === 0 || !canPaste}
-          className="rounded-md border border-white/25 px-2 py-1 text-xs font-semibold hover:bg-white/10 disabled:opacity-50"
+          className="m3-button m3-button-ghost border border-[var(--outline)] px-3 py-1.5 text-xs font-semibold hover:border-[var(--outline-strong)] disabled:opacity-50"
         >
           Paste
         </button>
@@ -88,21 +88,21 @@ export default function DuplicantActionsPanel({ duplicantId, duplicantName }) {
           type="button"
           onClick={() => exportDuplicantBehaviors(duplicantId, selectedNames)}
           disabled={selectedNames.length === 0}
-          className="rounded-md border border-white/25 px-2 py-1 text-xs font-semibold hover:bg-white/10 disabled:opacity-50"
+          className="m3-button m3-button-ghost border border-[var(--outline)] px-3 py-1.5 text-xs font-semibold hover:border-[var(--outline-strong)] disabled:opacity-50"
         >
           Export
         </button>
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="rounded-md border border-white/25 px-2 py-1 text-xs font-semibold hover:bg-white/10"
+          className="m3-button m3-button-ghost border border-[var(--outline)] px-3 py-1.5 text-xs font-semibold hover:border-[var(--outline-strong)]"
         >
           Import
         </button>
         <button
           type="button"
           onClick={() => cloneDuplicant(duplicantId)}
-          className="rounded-md border border-white/25 px-2 py-1 text-xs font-semibold hover:bg-white/10"
+          className="m3-button m3-button-ghost border border-[var(--outline)] px-3 py-1.5 text-xs font-semibold hover:border-[var(--outline-strong)]"
         >
           Clone
         </button>

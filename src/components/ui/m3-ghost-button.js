@@ -7,9 +7,8 @@ export default function M3GhostButton({
   ...props
 }) {
   return (
-    <button type={type} className={`m3-button-ghost ${className}`.trim()} {...props}>
+    <button type={type} className={`m3-button m3-button-ghost ${className}`.trim()} {...props}>
       {children}
     </button>
   );
 }
-

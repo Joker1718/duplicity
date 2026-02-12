@@ -7,6 +7,7 @@ import { FaChevronLeft } from "react-icons/fa6";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { useSaveSession } from "@/lib/save-session/save-session-context";
 import M3CircleButton from "@/components/ui/m3-circle-button";
+import M3ExpressiveLoadingIndicator from "@/components/ui/m3-expressive-loading-indicator";
 
 const NAV_ITEMS = [
   { href: "/", i18nKey: "overview-page.title", fallback: "Overview", saveRequired: false },
@@ -143,17 +144,7 @@ function getErrorGuidance(error, t) {
   };
 }
 
-function clampPercent(value) {
-  if (!Number.isFinite(value)) {
-    return null;
-  }
-  if (value <= 1) {
-    return Math.max(0, Math.min(100, value * 100));
-  }
-  return Math.max(0, Math.min(100, value));
-}
-
-function parseProgressMessage(status, message, t) {
+function resolveProgressText(status, message, t) {
   const fallbackMessage =
     status === "loading"
       ? t("app.progress.reading", { fallback: "Reading save data..." })
@@ -161,22 +152,7 @@ function parseProgressMessage(status, message, t) {
 
   if (typeof message === "string") {
     const text = message.trim();
-    if (!text) {
-      return { text: fallbackMessage, percent: null };
-    }
-    const percentMatch = text.match(/(\d{1,3})(?:\.\d+)?\s*%/);
-    if (percentMatch) {
-      return { text, percent: clampPercent(Number(percentMatch[1])) };
-    }
-    const fractionMatch = text.match(/(\d+)\s*\/\s*(\d+)/);
-    if (fractionMatch) {
-      const current = Number(fractionMatch[1]);
-      const total = Number(fractionMatch[2]);
-      if (total > 0) {
-        return { text, percent: clampPercent((current / total) * 100) };
-      }
-    }
-    return { text, percent: null };
+    return text || fallbackMessage;
   }
 
   if (message && typeof message === "object") {
@@ -187,24 +163,10 @@ function parseProgressMessage(status, message, t) {
       message.status ||
       fallbackMessage;
 
-    let percent =
-      clampPercent(message.percent) ??
-      clampPercent(message.progress) ??
-      clampPercent(message.percentage);
-
-    if (percent === null && Number.isFinite(message.current) && Number.isFinite(message.total)) {
-      if (message.total > 0) {
-        percent = clampPercent((message.current / message.total) * 100);
-      }
-    }
-
-    return {
-      text: String(text).trim() || fallbackMessage,
-      percent,
-    };
+    return String(text).trim() || fallbackMessage;
   }
 
-  return { text: fallbackMessage, percent: null };
+  return fallbackMessage;
 }
 
 function LoadingDialog({ status, message, fileName, t }) {
@@ -216,8 +178,7 @@ function LoadingDialog({ status, message, fileName, t }) {
     status === "loading"
       ? t("save-file.conditions.loading", { fallback: "Loading" })
       : t("save-file.conditions.saving", { fallback: "Saving" });
-  const progress = parseProgressMessage(status, message, t);
-  const roundedPercent = progress.percent === null ? null : Math.round(progress.percent);
+  const progressText = resolveProgressText(status, message, t);
 
   return (
     <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
@@ -228,21 +189,9 @@ function LoadingDialog({ status, message, fileName, t }) {
             {t("app.file-label", { fallback: "File" })}: <code>{fileName}</code>
           </p>
         ) : null}
-        <div className="mt-4 flex items-center justify-between gap-3 text-sm opacity-85">
-          <p className="min-w-0 truncate">{progress.text}</p>
-          {roundedPercent !== null ? (
-            <span className="shrink-0 text-xs font-semibold opacity-80">{roundedPercent}%</span>
-          ) : null}
-        </div>
-        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[var(--surface-container-highest)]">
-          {roundedPercent !== null ? (
-            <div
-              className="h-full rounded-full bg-[var(--accent)] transition-[width] duration-150 ease-out"
-              style={{ width: `${progress.percent}%` }}
-            />
-          ) : (
-            <div className="m3-progress-indeterminate h-full rounded-full bg-[var(--accent)]" />
-          )}
+        <div className="mt-4 flex items-center gap-3">
+          <M3ExpressiveLoadingIndicator size={64} aria-hidden="true" />
+          <p className="min-w-0 truncate text-sm opacity-85">{progressText}</p>
         </div>
       </div>
     </div>
@@ -515,6 +464,9 @@ export default function AppShell({ children }) {
       valueClass: "text-[var(--success)]",
     };
   }, [hasSave, isModified, showSavedState, t]);
+  const loadButtonClassName = hasSave
+    ? "m3-button m3-button-hollow px-3 py-2 text-sm"
+    : "m3-button m3-button-tonal px-3 py-2 text-sm";
 
   return (
     <div className="h-dvh overflow-hidden bg-background text-foreground">
@@ -601,7 +553,7 @@ export default function AppShell({ children }) {
                 </div>
                 <Link
                   href="/settings"
-                  className="m3-button m3-button-outlined px-3 py-2 text-sm"
+                  className="m3-button m3-button-hollow px-3 py-2 text-sm"
                 >
                   {t("app.page-title.settings", { fallback: "Settings" })}
                 </Link>
@@ -609,18 +561,20 @@ export default function AppShell({ children }) {
                   type="button"
                   onClick={onLoadButtonClick}
                   disabled={isBusy}
-                  className="m3-button m3-button-outlined px-3 py-2 text-sm"
+                  className={loadButtonClassName}
                 >
                   {t("save-file.verbs.load_titlecase", { fallback: "Load" })}
                 </button>
-                <button
-                  type="button"
-                  onClick={onSaveButtonClick}
-                  disabled={isBusy || !hasSave}
-                  className="m3-button m3-button-tonal px-3 py-2 text-sm"
-                >
-                  {t("save-file.verbs.save_titlecase", { fallback: "Save" })}
-                </button>
+                {hasSave ? (
+                  <button
+                    type="button"
+                    onClick={onSaveButtonClick}
+                    disabled={isBusy}
+                    className="m3-button m3-button-tonal px-3 py-2 text-sm"
+                  >
+                    {t("save-file.verbs.save_titlecase", { fallback: "Save" })}
+                  </button>
+                ) : null}
               </div>
               {error?.message ? (
                 <div className="mt-3 rounded-lg border border-red-300/40 bg-[var(--error-surface)] p-3 text-sm">

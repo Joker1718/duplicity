@@ -6,6 +6,7 @@ import { useSaveSession } from "@/lib/save-session/save-session-context";
 import { probeSaveGame } from "@/lib/oni/save-probe";
 import { HAIR_OFFSET_BASES } from "@/lib/oni/hair-offsets";
 import M3Select from "@/components/ui/m3-select";
+import M3ExpressiveLoadingIndicator from "@/components/ui/m3-expressive-loading-indicator";
 import { withBasePath } from "@/lib/asset-paths";
 
 export default function SettingsPage() {
@@ -27,6 +28,7 @@ export default function SettingsPage() {
   const [hairOffsetScale, setHairOffsetScale] = useState("1");
   const [hairOffsetError, setHairOffsetError] = useState("");
   const [hairOffsetJson, setHairOffsetJson] = useState("");
+  const [modalPreview, setModalPreview] = useState(null);
   const dragRef = useRef(null);
 
   useEffect(() => {
@@ -62,6 +64,21 @@ export default function SettingsPage() {
     }
     window.localStorage.setItem("duplicity.hairOffsets", JSON.stringify(hairOffsets));
   }, [hairOffsets, hairOffsetsLoaded]);
+
+  useEffect(() => {
+    if (!modalPreview || typeof window === "undefined") {
+      return;
+    }
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setModalPreview(null);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [modalPreview]);
 
   useEffect(() => {
     const parsedHairId = Number(hairOffsetHairId);
@@ -274,16 +291,11 @@ export default function SettingsPage() {
   }, [downloadJson, probe, runProbe]);
 
   return (
-    <section className="rounded-xl border border-black/10 p-5 dark:border-white/15">
+    <>
+      <section className="rounded-xl border border-black/10 p-5 dark:border-white/15">
       <h1 className="text-2xl font-semibold">
         {t("app.page-title.settings", { fallback: "Settings" })}
       </h1>
-      <p className="mt-2 text-sm opacity-80">
-        {t("settings.language.description", {
-          fallback:
-            "Duplicity ships in English only right now. Translators are welcome to help expand language support.",
-        })}
-      </p>
 
       <div className="mt-5 max-w-md rounded-xl border border-white/20 p-4">
         <label className="text-sm font-semibold" htmlFor="language-select">
@@ -344,6 +356,11 @@ export default function SettingsPage() {
           <option value="none">none</option>
         </M3Select>
       </div>
+
+      </section>
+
+      <section className="mt-5 rounded-xl border border-black/10 p-5 dark:border-white/15">
+      <h2 className="text-2xl font-semibold">Dev Tools</h2>
 
       <div className="mt-5 rounded-xl border border-white/15 p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -628,6 +645,189 @@ export default function SettingsPage() {
           </aside>
         </div>
       </div>
-    </section>
+
+      <div className="mt-5 rounded-xl border border-white/20 p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold">Modal Playground</h2>
+            <p className="mt-1 text-xs opacity-75">
+              Open each app modal to validate layout, copy, and controls.
+            </p>
+          </div>
+          {modalPreview ? (
+            <button
+              type="button"
+              onClick={() => setModalPreview(null)}
+              className="m3-button m3-button-outlined px-3 py-2 text-xs"
+            >
+              Close Preview
+            </button>
+          ) : null}
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setModalPreview("loading")}
+            className="m3-button m3-button-outlined px-3 py-2 text-xs"
+          >
+            Loading Modal
+          </button>
+          <button
+            type="button"
+            onClick={() => setModalPreview("saving")}
+            className="m3-button m3-button-outlined px-3 py-2 text-xs"
+          >
+            Saving Modal
+          </button>
+          <button
+            type="button"
+            onClick={() => setModalPreview("import-warning")}
+            className="m3-button m3-button-outlined px-3 py-2 text-xs"
+          >
+            Import Warning Modal
+          </button>
+          <button
+            type="button"
+            onClick={() => setModalPreview("backup-prompt")}
+            className="m3-button m3-button-outlined px-3 py-2 text-xs"
+          >
+            Backup Prompt Modal
+          </button>
+        </div>
+      </div>
+
+      </section>
+
+      {modalPreview === "loading" || modalPreview === "saving" ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          onClick={() => setModalPreview(null)}
+        >
+          <div
+            className="m3-surface-raised w-full max-w-md p-5"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h3 className="text-xl font-semibold">
+              {modalPreview === "loading"
+                ? t("save-file.conditions.loading", { fallback: "Loading" })
+                : t("save-file.conditions.saving", { fallback: "Saving" })}
+            </h3>
+            <p className="mt-1 text-xs opacity-70">
+              {t("app.file-label", { fallback: "File" })}:{" "}
+              <code>{fileName || "example_save.sav"}</code>
+            </p>
+            <div className="mt-4 flex items-center gap-3">
+              <M3ExpressiveLoadingIndicator size={64} aria-hidden="true" />
+              <p className="min-w-0 truncate text-sm opacity-85">
+                {modalPreview === "loading"
+                  ? t("app.progress.reading", { fallback: "Reading save data..." })
+                  : t("app.progress.writing", { fallback: "Writing save data..." })}
+              </p>
+            </div>
+            <div className="mt-4">
+              <button
+                type="button"
+                onClick={() => setModalPreview(null)}
+                className="m3-button m3-button-tonal px-3 py-2 text-sm"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {modalPreview === "import-warning" ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          onClick={() => setModalPreview(null)}
+        >
+          <div
+            className="m3-surface-raised w-full max-w-lg p-5"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h3 className="text-xl font-semibold">
+              {t("app.import-warning.title", { fallback: "Checksum Warning" })}
+            </h3>
+            <p className="mt-2 text-sm opacity-85">
+              {t("app.import-warning.detail", {
+                fallback:
+                  "Import file checksum does not match the payload. Data may have been modified.",
+              })}
+            </p>
+            <p className="mt-2 text-xs opacity-75">
+              {t("app.file-label", { fallback: "File" })}: <code>import.json</code>
+            </p>
+            <p className="mt-1 text-xs opacity-75">
+              {t("app.expected", { fallback: "Expected" })}: <code>abc123</code>
+            </p>
+            <p className="mt-1 text-xs opacity-75">
+              {t("app.actual", { fallback: "Actual" })}: <code>def456</code>
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setModalPreview(null)}
+                className="m3-button m3-button-outlined px-3 py-2 text-sm"
+              >
+                {t("dialog.verbs.cancel_titlecase", { fallback: "Cancel" })}
+              </button>
+              <button
+                type="button"
+                onClick={() => setModalPreview(null)}
+                className="m3-button m3-button-tonal px-3 py-2 text-sm"
+              >
+                {t("app.import-warning.import-anyway", { fallback: "Import Anyway" })}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {modalPreview === "backup-prompt" ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          onClick={() => setModalPreview(null)}
+        >
+          <div
+            className="m3-surface-raised w-full max-w-lg p-5"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h3 className="text-xl font-semibold">
+              {t("app.backup.title", { fallback: "Download Backup Save File?" })}
+            </h3>
+            <p className="mt-2 text-sm opacity-85">
+              {t("app.backup.detail", {
+                fallback:
+                  "You're about to overwrite the current save file. Do you want to download a backup first?",
+              })}
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setModalPreview(null)}
+                className="m3-button m3-button-outlined px-3 py-2 text-sm"
+              >
+                {t("dialog.verbs.cancel_titlecase", { fallback: "Cancel" })}
+              </button>
+              <button
+                type="button"
+                onClick={() => setModalPreview(null)}
+                className="m3-button m3-button-outlined px-3 py-2 text-sm"
+              >
+                {t("app.backup.skip", { fallback: "Skip Backup" })}
+              </button>
+              <button
+                type="button"
+                onClick={() => setModalPreview(null)}
+                className="m3-button m3-button-tonal px-3 py-2 text-sm"
+              >
+                {t("app.backup.confirm", { fallback: "Download Backup & Save" })}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </>
   );
 }

@@ -13,26 +13,3 @@
   transform: scale(var(--m3e-loading-scale));
   transform-origin: center;
 }
-
-@keyframes m3e-loading-fallback-pulse {
-  0% {
-    opacity: 0.5;
-    transform: scale(0.82);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  100% {
-    opacity: 0.5;
-    transform: scale(0.82);
-  }
-}
-
-.fallback {
-  height: calc(var(--m3e-loading-size) * 0.55);
-  width: calc(var(--m3e-loading-size) * 0.55);
-  border-radius: 9999px;
-  background: color-mix(in oklab, var(--accent) 88%, white);
-  animation: m3e-loading-fallback-pulse 1.1s ease-in-out infinite;
-}

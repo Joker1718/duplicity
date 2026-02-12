@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import styles from "@/components/ui/m3-expressive-loading-indicator.module.css";
 
 const M3E_LOADING_TAG = "m3e-loading-indicator";
@@ -26,40 +26,31 @@ function ensureM3ELoadingIndicator() {
 export default function M3ExpressiveLoadingIndicator({
   size = 56,
   variant = "uncontained",
+  color = "var(--accent)",
   className = "",
   style,
   ...props
 }) {
   const parsedSize = Number(size);
   const clampedSize = Number.isFinite(parsedSize) ? Math.max(24, parsedSize) : 56;
-  const [isReady, setIsReady] = useState(
-    () => typeof window !== "undefined" && Boolean(window.customElements?.get(M3E_LOADING_TAG))
-  );
 
   useEffect(() => {
-    let mounted = true;
-    ensureM3ELoadingIndicator().then((loaded) => {
-      if (mounted && loaded) {
-        setIsReady(true);
-      }
-    });
-    return () => {
-      mounted = false;
-    };
+    ensureM3ELoadingIndicator();
   }, []);
 
   const mergedStyle = {
     ...style,
     "--m3e-loading-size": `${clampedSize}px`,
+    "--m3e-loading-color": color,
+  };
+  const indicatorStyle = {
+    "--m3e-loading-indicator-active-indicator-color": color,
+    "--m3e-loading-indicator-contained-active-indicator-color": color,
   };
 
   return (
     <span className={`${styles.root} ${className}`.trim()} style={mergedStyle} {...props}>
-      {isReady ? (
-        <m3e-loading-indicator variant={variant} />
-      ) : (
-        <span className={styles.fallback} />
-      )}
+      <m3e-loading-indicator variant={variant} style={indicatorStyle} />
     </span>
   );
 }

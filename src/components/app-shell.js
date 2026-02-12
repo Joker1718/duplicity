@@ -5,9 +5,11 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FaChevronLeft } from "react-icons/fa6";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { selectCreatures, selectDuplicants, selectGeysers } from "@/lib/oni/save-selectors";
 import { useSaveSession } from "@/lib/save-session/save-session-context";
 import M3CircleButton from "@/components/ui/m3-circle-button";
 import M3ExpressiveLoadingIndicator from "@/components/ui/m3-expressive-loading-indicator";
+import M3NavigationDrawer from "@/components/ui/m3-navigation-drawer";
 
 const NAV_ITEMS = [
   { href: "/", i18nKey: "overview-page.title", fallback: "Overview", saveRequired: false },
@@ -30,7 +32,7 @@ const SAVE_REQUIRED_PATH_PREFIXES = [
   "/planets",
   "/materials",
 ];
-const UI_VERSION_LABEL = "v4.0.2";
+const UI_VERSION_LABEL = "v4.0.3";
 const SAVED_STATUS_DURATION_MS = 3000;
 
 function normalizePathname(pathname) {
@@ -74,13 +76,6 @@ function getPageTitle(pathname, t, hasSave) {
     return t("changelog.title", { fallback: "Changelog" });
   }
   return t("app.page-title.home", { fallback: "Duplicity V4" });
-}
-
-function isActive(pathname, href) {
-  if (href === "/") {
-    return pathname === "/";
-  }
-  return pathname === href || pathname.startsWith(`${href}/`);
 }
 
 function routeRequiresSave(pathname) {
@@ -324,6 +319,9 @@ export default function AppShell({ children }) {
   } = useSaveSession();
   const previousStatusRef = useRef(status);
   const pageTitle = useMemo(() => getPageTitle(pathname, t, hasSave), [hasSave, pathname, t]);
+  const duplicantsCount = useMemo(() => selectDuplicants(saveGame).length, [saveGame]);
+  const creaturesCount = useMemo(() => selectCreatures(saveGame).length, [saveGame]);
+  const geysersCount = useMemo(() => selectGeysers(saveGame).length, [saveGame]);
 
   const dlcIds = useMemo(() => readDlcIds(saveGame), [saveGame]);
   const dlcNames = useMemo(() => dlcIds.map(getDlcDisplayName), [dlcIds]);
@@ -491,50 +489,25 @@ export default function AppShell({ children }) {
       />
       <div className="mx-auto flex h-full w-full max-w-[1432px] flex-col p-3">
         <div className="flex min-h-0 flex-1 gap-4">
-          <aside className="m3-surface hidden h-full w-64 overflow-y-auto p-4 md:flex md:flex-col">
-            <h1 className="text-lg font-semibold">Duplicity</h1>
-            <p className="mt-2 text-xs uppercase tracking-wide opacity-70">
-              {t("app.status-label", { fallback: "Status" })}: {statusText}
-            </p>
-            <nav className="mt-5 space-y-1">
-              {NAV_ITEMS.map((item) => {
-                const saveLocked = item.saveRequired && !hasSave;
-                const disabled = saveLocked || item.implemented === false;
-                const active = isActive(pathname, item.href);
-                if (disabled) {
-                  return (
-                    <span
-                      key={item.href}
-                      className="m3-nav-item m3-nav-item-disabled block px-3 py-2 text-sm"
-                      title={
-                        item.implemented === false
-                          ? t("app.nav.planned-title", {
-                              fallback: "Planned but not implemented in V4 yet.",
-                            })
-                          : t("app.nav.load-save-first", { fallback: "Load a save first." })
-                      }
-                    >
-                      {t(item.i18nKey, { fallback: item.fallback })}
-                    </span>
-                  );
-                }
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`m3-nav-item block px-3 py-2 text-sm ${
-                      active ? "m3-nav-item-active" : ""
-                    }`}
-                  >
-                    {t(item.i18nKey, { fallback: item.fallback })}
-                  </Link>
-                );
-              })}
-            </nav>
-            <p className="mt-auto pt-5 text-center text-[10px] tracking-wide opacity-55">
-              {UI_VERSION_LABEL}
-            </p>
-          </aside>
+          <M3NavigationDrawer
+            appName="Duplicity"
+            statusLabel={t("app.status-label", { fallback: "Status" })}
+            statusText={statusText}
+            navItems={NAV_ITEMS}
+            itemBadges={
+              hasSave
+                ? {
+                    "/duplicants": duplicantsCount,
+                    "/creatures": creaturesCount,
+                    "/geysers": geysersCount,
+                  }
+                : null
+            }
+            pathname={pathname}
+            hasSave={hasSave}
+            uiVersionLabel={UI_VERSION_LABEL}
+            t={t}
+          />
 
           <div className="m3-surface flex min-h-0 w-full flex-col overflow-hidden md:max-w-[1136px]">
             <header className="border-b border-[var(--outline)] bg-[var(--surface)] px-4 py-3 sm:px-6">

@@ -113,6 +113,11 @@ select option:focus,
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.5), 0 8px 24px rgba(0, 0, 0, 0.28);
 }
 
+.m3-navigation-drawer {
+  background: var(--surface-container-low);
+}
+
+.m3-navigation-drawer-item,
 .m3-nav-item {
   display: block;
   border-radius: 0.75rem;
@@ -121,19 +126,31 @@ select option:focus,
   transition: background-color 120ms ease, border-color 120ms ease;
 }
 
+.m3-navigation-drawer-item:hover,
 .m3-nav-item:hover {
   background: var(--state-hover);
 }
 
+.m3-navigation-drawer-item-active,
 .m3-nav-item-active {
   background: var(--surface-container-high);
   border-color: var(--outline-strong);
   color: var(--foreground);
 }
 
+.m3-navigation-drawer-item-disabled,
 .m3-nav-item-disabled {
   color: var(--muted);
   opacity: 0.6;
+}
+
+.m3-navigation-drawer-badge {
+  margin-left: auto;
+  color: var(--foreground);
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
 }
 
 .m3-button {

@@ -1128,6 +1128,55 @@ export function SaveSessionProvider({ children }) {
     [setSaveGame, state.saveGame]
   );
 
+  const updateDuplicantAttributesBatch = useCallback(
+    (duplicantId, attributeIdValueMap) => {
+      if (!state.saveGame || !attributeIdValueMap) {
+        return;
+      }
+      const next = mutateDuplicant(state.saveGame, duplicantId, (gameObject) =>
+        updateBehaviorTemplateAny(
+          gameObject,
+          ["Klei.AI.AttributeLevels", "AttributeLevels"],
+          (template) => {
+            const levels = Array.isArray(template?.saveLoadLevels) ? template.saveLoadLevels : [];
+            let changed = false;
+            const nextLevels = [...levels];
+
+            for (const [attributeId, nextLevel] of Object.entries(attributeIdValueMap)) {
+              let found = false;
+              for (let i = 0; i < nextLevels.length; i += 1) {
+                if (nextLevels[i]?.attributeId === attributeId) {
+                  if (nextLevels[i].level !== nextLevel) {
+                    nextLevels[i] = { ...nextLevels[i], level: nextLevel };
+                    changed = true;
+                  }
+                  found = true;
+                  break;
+                }
+              }
+              if (!found) {
+                nextLevels.push({
+                  attributeId,
+                  experience: 0,
+                  level: nextLevel,
+                });
+                changed = true;
+              }
+            }
+            return changed
+              ? {
+                  ...(template || {}),
+                  saveLoadLevels: nextLevels,
+                }
+              : template;
+          }
+        )
+      );
+      setSaveGame(next, { isModified: next !== state.saveGame });
+    },
+    [setSaveGame, state.saveGame]
+  );
+
   const setDuplicantInterest = useCallback(
     (duplicantId, interestName, enabled) => {
       if (!state.saveGame || typeof interestName !== "string") {
@@ -1934,6 +1983,7 @@ export function SaveSessionProvider({ children }) {
       addDuplicantInterest,
       removeDuplicantInterest,
       updateDuplicantAttributeLevel,
+      updateDuplicantAttributesBatch,
       updateDuplicantAppearance,
       updateDuplicantGender,
       updateDuplicantHealthModifier,
@@ -1984,6 +2034,7 @@ export function SaveSessionProvider({ children }) {
     setSelectedCreatureId,
     state,
     updateDuplicantAttributeLevel,
+    updateDuplicantAttributesBatch,
     updateDuplicantAppearance,
     updateDuplicantGender,
     updateDuplicantEffectCycles,

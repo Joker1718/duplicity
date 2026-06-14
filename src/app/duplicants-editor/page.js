@@ -29,7 +29,7 @@ import {
 } from "@/lib/oni/trait-names";
 
 const ATTRIBUTE_MIN_LEVEL = -20;
-const ATTRIBUTE_MAX_LEVEL = 99;
+const ATTRIBUTE_MAX_LEVEL = 999;
 const MAX_NAME_LENGTH = 64;
 const EXPERIENCE_MIN = 0;
 const HEALTH_MIN = 0;
@@ -105,6 +105,7 @@ function DuplicantEditorPageContent() {
     addDuplicantInterest,
     removeDuplicantInterest,
     updateDuplicantAttributeLevel,
+    updateDuplicantAttributesBatch,
     updateDuplicantAppearance,
     updateDuplicantGender,
     updateDuplicantHealthModifier,
@@ -733,6 +734,21 @@ function DuplicantEditorPageContent() {
     }
     addDuplicantEffect(model.id, newEffectId, parsed);
     setNewEffectError("");
+  };
+
+  const onSetAllAttributesMax = () => {
+    if (!model?.attributes) {
+      return;
+    }
+    const batch = {};
+    const nextDrafts = { ...attributeDrafts };
+    for (const attribute of model.attributes) {
+      batch[attribute.attributeId] = ATTRIBUTE_MAX_LEVEL;
+      nextDrafts[attribute.attributeId] = String(ATTRIBUTE_MAX_LEVEL);
+    }
+    updateDuplicantAttributesBatch(model.id, batch);
+    setAttributeDrafts(nextDrafts);
+    setAttributeErrors({});
   };
 
   const onSelectDuplicant = (id) => {
@@ -1372,7 +1388,16 @@ function DuplicantEditorPageContent() {
       </div>
 
       <div className="rounded-xl border border-white/20 p-4">
-        <h2 className="text-lg font-semibold">Attributes</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Attributes</h2>
+          <button
+            type="button"
+            onClick={onSetAllAttributesMax}
+            className="rounded-md bg-[var(--accent)] px-3 py-1 text-xs font-semibold text-black hover:brightness-110"
+          >
+            Set All to {ATTRIBUTE_MAX_LEVEL}
+          </button>
+        </div>
         <p className="mt-1 text-xs opacity-70">
           Allowed range: {ATTRIBUTE_MIN_LEVEL} to {ATTRIBUTE_MAX_LEVEL}, whole numbers only.
         </p>
